@@ -27,7 +27,7 @@ http_proxy_client_connection::http_proxy_client_connection(boost::asio::ip::tcp:
     strand(ua_socket.get_io_service()),
     user_agent_socket(std::move(ua_socket)),
     proxy_server_socket(this->user_agent_socket.get_io_service()),
-	resolver(this->user_agent_socket.get_io_service()),
+    resolver(this->user_agent_socket.get_io_service()),
     connection_state(proxy_connection_state::ready),
     timer(this->user_agent_socket.get_io_service()),
     timeout(std::chrono::seconds(http_proxy_client_config::get_instance().get_timeout()))
