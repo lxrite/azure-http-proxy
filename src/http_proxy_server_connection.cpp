@@ -11,8 +11,6 @@
 #include <cassert>
 #include <cstring>
 
-#include <boost/regex.hpp>
-
 extern "C" {
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
