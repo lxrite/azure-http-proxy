@@ -8,10 +8,15 @@
 #ifndef AZURE_ENCRYPT_HPP
 #define AZURE_ENCRYPT_HPP
 
+#include <cassert>
 #include <cstring>
+#include <memory>
+#include <stdexcept>
 
 extern "C" {
 #include <openssl/aes.h>
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
 }
 
 namespace azure_proxy {
@@ -271,6 +276,85 @@ public:
     }
 
     virtual ~aes_ctr128_decryptor() {
+    }
+};
+
+enum class rsa_padding {
+    pkcs1_padding,
+    pkcs1_oaep_padding,
+    sslv23_padding,
+    no_padding
+};
+
+class rsa {
+    bool is_pub;
+    std::shared_ptr<RSA> rsa_handle;
+public:
+    rsa(const std::string& key) {
+        if (key.size() > 26 && std::equal(key.begin(), key.begin() + 26, "-----BEGIN PUBLIC KEY-----")) {
+            this->is_pub = true;
+        }
+        else if (key.size() > 31 && std::equal(key.begin(), key.begin() + 31, "-----BEGIN RSA PRIVATE KEY-----")) {
+            this->is_pub = false;
+        }
+        else {
+            throw std::invalid_argument("invalid argument");
+        }
+
+        auto bio_handle = std::shared_ptr<BIO>(BIO_new_mem_buf(const_cast<char*>(key.data()), key.size()), BIO_free);
+        if (bio_handle) {
+            if (this->is_pub) {
+                this->rsa_handle = std::shared_ptr<RSA>(PEM_read_bio_RSA_PUBKEY(bio_handle.get(), nullptr, nullptr, nullptr), RSA_free);
+            }
+            else {
+                this->rsa_handle = std::shared_ptr<RSA>(PEM_read_bio_RSAPrivateKey(bio_handle.get(), nullptr, nullptr, nullptr), RSA_free);
+            }
+        }
+        if (!this->rsa_handle) {
+            throw std::invalid_argument("invalid argument");
+        }
+    }
+
+    int encrypt(int flen, unsigned char* from, unsigned char* to, rsa_padding padding) {
+        assert(from && to);
+        int pad = this->rsa_padding2int(padding);
+        if (this->is_pub) {
+            return RSA_public_encrypt(flen, from, to, this->rsa_handle.get(), pad);
+        }
+        else {
+            return RSA_private_encrypt(flen, from, to, this->rsa_handle.get(), pad);
+        }
+    }
+
+    int decrypt(int flen, unsigned char* from, unsigned char* to, rsa_padding padding) {
+        assert(from && to);
+        int pad = this->rsa_padding2int(padding);
+        if (this->is_pub) {
+            return RSA_private_decrypt(flen, from, to, this->rsa_handle.get(), pad);
+        }
+        else {
+            return RSA_private_decrypt(flen, from, to, this->rsa_handle.get(), pad);
+        }
+    }
+
+    int modulus_size() const {
+        return RSA_size(this->rsa_handle.get());
+    }
+private:
+    int rsa_padding2int(rsa_padding padding) {
+        switch (padding) {
+            case rsa_padding::pkcs1_padding:
+                return RSA_PKCS1_PADDING;
+                break;
+            case rsa_padding::pkcs1_oaep_padding:
+                return RSA_PKCS1_OAEP_PADDING;
+                break;
+            case rsa_padding::sslv23_padding:
+                return RSA_SSLV23_PADDING;
+                break;
+            default:
+                return RSA_NO_PADDING;
+        }
     }
 };
 
