@@ -37,7 +37,7 @@ public:
     unsigned short get_proxy_server_port() const;
     const std::string& get_bind_address() const;
     unsigned short get_listen_port() const;
-    const std::string& get_rsa_2048_public_key() const;
+    const std::string& get_rsa_public_key() const;
     const std::string& get_cipher() const;
     unsigned int get_timeout() const;
     unsigned int get_workers() const;

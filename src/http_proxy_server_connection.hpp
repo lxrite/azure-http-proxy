@@ -32,6 +32,8 @@ class http_proxy_server_connection : public std::enable_shared_from_this<http_pr
     std::array<char, BUFFER_LENGTH> upgoing_buffer_write;
     std::array<char, BUFFER_LENGTH> downgoing_buffer_read;
     std::array<char, BUFFER_LENGTH> downgoing_buffer_write;
+    rsa rsa_pri;
+    std::vector<unsigned char> encrypted_cipher_info;
     std::unique_ptr<stream_encryptor> encryptor;
     std::unique_ptr<stream_decryptor> decryptor;
     std::string request_data;

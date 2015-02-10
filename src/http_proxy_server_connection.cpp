@@ -5,17 +5,10 @@
  *
  */
 
-#include <iostream>
 #include <cctype>
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-
-extern "C" {
-#include <openssl/rsa.h>
-#include <openssl/pem.h>
-#include <openssl/md5.h>
-}
 
 #include "http_proxy_server_config.hpp"
 #include "http_proxy_server_connection.hpp"
@@ -30,7 +23,8 @@ http_proxy_server_connection::http_proxy_server_connection(boost::asio::ip::tcp:
     proxy_client_socket(std::move(proxy_client_socket)),
     origin_server_socket(this->proxy_client_socket.get_io_service()),
     resolver(this->proxy_client_socket.get_io_service()),
-    timer(this->proxy_client_socket.get_io_service())
+    timer(this->proxy_client_socket.get_io_service()),
+    rsa_pri(http_proxy_server_config::get_instance().get_rsa_private_key())
 {
     this->connection_context.connection_state = proxy_connection_state::read_cipher_data;
 }
@@ -47,7 +41,7 @@ std::shared_ptr<http_proxy_server_connection> http_proxy_server_connection::crea
 void http_proxy_server_connection::start()
 {
     this->connection_context.connection_state = proxy_connection_state::read_cipher_data;
-    this->async_read_data_from_proxy_client(256, 256);
+    this->async_read_data_from_proxy_client(1, std::min<std::size_t>(this->rsa_pri.modulus_size(), BUFFER_LENGTH));
 }
 
 void http_proxy_server_connection::async_read_data_from_proxy_client(std::size_t at_least_size, std::size_t at_most_size)
@@ -360,122 +354,123 @@ void http_proxy_server_connection::on_connect()
 void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t bytes_transferred)
 {
     if (this->connection_context.connection_state == proxy_connection_state::read_cipher_data) {
-        assert(bytes_transferred == 256);
-        bool success = true;
-        do {
-            const auto& private_key = http_proxy_server_config::get_instance().get_rsa_2048_private_key();
-            std::shared_ptr<BIO> bio_handle(BIO_new_mem_buf(const_cast<char*>(private_key.data()), private_key.size()), BIO_free);
-            if (!bio_handle) {
-                success = false;
-                break;
-            }
-            std::shared_ptr<RSA> rsa_handle(PEM_read_bio_RSAPrivateKey(bio_handle.get(), NULL, NULL, NULL), RSA_free);
-            if (!rsa_handle) {
-                success = false;
-                break;
-            }
+        std::copy(this->upgoing_buffer_read.begin(), this->upgoing_buffer_read.begin() + bytes_transferred, std::back_inserter(this->encrypted_cipher_info));
+        if (this->encrypted_cipher_info.size() < this->rsa_pri.modulus_size()) {
+            this->async_read_data_from_proxy_client(1, std::min(static_cast<std::size_t>(this->rsa_pri.modulus_size()) - this->encrypted_cipher_info.size(), BUFFER_LENGTH));
+            return;
+        }
+        assert(this->encrypted_cipher_info.size() == this->rsa_pri.modulus_size());
+        std::vector<unsigned char> decrypted_cipher_info(this->rsa_pri.modulus_size());
 
-            unsigned char* out_buffer = reinterpret_cast<unsigned char*>(&this->upgoing_buffer_write[0]);
-            RSA_private_decrypt(256, reinterpret_cast<const unsigned char*>(&this->upgoing_buffer_read[0]), out_buffer, rsa_handle.get(), RSA_NO_PADDING);
-            unsigned char md5_checksum[MD5_DIGEST_LENGTH];
-            if (NULL == MD5(out_buffer, 240, md5_checksum)) {
-                success = false;
-                break;
-            }
+        if (86 != this->rsa_pri.decrypt(this->rsa_pri.modulus_size(), this->encrypted_cipher_info.data(), decrypted_cipher_info.data(), rsa_padding::pkcs1_oaep_padding)) {
+            return;
+        }
 
-            if (std::memcmp(md5_checksum, &out_buffer[240], MD5_DIGEST_LENGTH) != 0) {
-                success = false;
-                break;
-            }
+        if (decrypted_cipher_info[0] != 'A' ||
+            decrypted_cipher_info[1] != 'H' ||
+            decrypted_cipher_info[2] != 'P' ||
+            decrypted_cipher_info[3] != 0 ||
+            decrypted_cipher_info[4] != 0 ||
+            decrypted_cipher_info[6] != 0
+            ) {
+            return;
+        }
 
-            if (!(out_buffer[0] == 'A' && out_buffer[1] == 'H' && out_buffer[2] == 'P')) {
-                success = false;
-                break;
-            }
+        // 5 cipher code
 
-            if (!(out_buffer[3] == 0 && out_buffer[4] == 0 && out_buffer[6] == 0)) {
-                success = false;
-                break;
+        // 0x00 aes-128-cfb
+        // 0x01 aes-128-cfb8
+        // 0x02 aes-128-cfb1
+        // 0x03 aes-128-ofb
+        // 0x04 aes-128-ctr
+        // 0x05 aes-192-cfb
+        // 0x06 aes-192-cfb8
+        // 0x07 aes-192-cfb1
+        // 0x08 aes-192-ofb
+        // 0x09 aes-192-ctr
+        // 0x0A aes-256-cfb
+        // 0x0B aes-256-cfb8
+        // 0x0C aes-256-cfb1
+        // 0x0D aes-256-ofb
+        // 0x0E aes-256-ctr
+        unsigned char cipher_code = decrypted_cipher_info[5];
+        if (cipher_code == '\x00' || cipher_code == '\x05' || cipher_code == '\x0A') {
+            // aes-xxx-cfb
+            std::size_t ivec_size = 16;
+            std::size_t key_bits = 256; // aes-256-cfb
+            if (cipher_code == '\x00') {
+                // aes-128-cfb
+                key_bits = 128;
             }
-
-            unsigned char cipher_code = out_buffer[5];
-            if (cipher_code == '\x00' || cipher_code == '\x01' || cipher_code == '\x02') {
-                // aes-cfb
-                std::size_t ivec_size = 16;
-                std::size_t key_bits = 256; // aes-256-cfb
-                if (cipher_code == '\x00') {
-                    // aes-128-cfb
-                    key_bits = 128;
-                }
-                else if (cipher_code == '\x01') {
-                    // aes-192-cfb
-                    key_bits = 192;
-                }
-                this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb128_encryptor(&out_buffer[24], key_bits, &out_buffer[7]));
-                this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb128_decryptor(&out_buffer[24], key_bits, &out_buffer[7]));
+            else if (cipher_code == '\x05') {
+                // aes-192-cfb
+                key_bits = 192;
             }
-            else if (cipher_code == '\x03' || cipher_code == '\x04' || cipher_code == '\x05') {
-                // ase-cfb8
-                std::size_t ivec_size = 16;
-                std::size_t key_bits = 256; // aes-256-cfb8
-                if (cipher_code == '\x03') {
-                    // aes-128-cfb8
-                    key_bits = 128;
-                }
-                else if (cipher_code == '\x04') {
-                    // aes-192-cfb8
-                    key_bits = 192;
-                }
-                this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb8_encryptor(&out_buffer[24], key_bits, &out_buffer[7]));
-                this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb8_decryptor(&out_buffer[24], key_bits, &out_buffer[7]));
+            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb128_encryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb128_decryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+        }
+        else if (cipher_code == '\x01' || cipher_code == '\x06' || cipher_code == '\x0B') {
+            // ase-xxx-cfb8
+            std::size_t ivec_size = 16;
+            std::size_t key_bits = 256; // aes-256-cfb8
+            if (cipher_code == '\x01') {
+                // aes-128-cfb8
+                key_bits = 128;
             }
-            else if (cipher_code == '\x06' || cipher_code == '\x07' || cipher_code == '\x08') {
-                // ase-cfb1
-                std::size_t ivec_size = 16;
-                std::size_t key_bits = 256; // aes-256-cfb1
-                if (cipher_code == '\x03') {
-                    // aes-128-cfb1
-                    key_bits = 128;
-                }
-                else if (cipher_code == '\x04') {
-                    // aes-192-cfb1
-                    key_bits = 192;
-                }
-                this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb1_encryptor(&out_buffer[24], key_bits, &out_buffer[7]));
-                this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb1_decryptor(&out_buffer[24], key_bits, &out_buffer[7]));
+            else if (cipher_code == '\x06') {
+                // aes-192-cfb8
+                key_bits = 192;
             }
-            else if (cipher_code == '\x09' || cipher_code == '\x0A' || cipher_code == '\x0B') {
-                // ase-ofb
-                std::size_t ivec_size = 16;
-                std::size_t key_bits = 256; // aes-256-ofb
-                if (cipher_code == '\x09') {
-                    // aes-128-ofb
-                    key_bits = 128;
-                }
-                else if (cipher_code == '\x0A') {
-                    // aes-192-ofb
-                    key_bits = 192;
-                }
-                this->encryptor = std::unique_ptr<stream_encryptor>(new aes_ofb128_encryptor(&out_buffer[24], key_bits, &out_buffer[7]));
-                this->decryptor = std::unique_ptr<stream_decryptor>(new aes_ofb128_decryptor(&out_buffer[24], key_bits, &out_buffer[7]));
+            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb8_encryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb8_decryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+        }
+        else if (cipher_code == '\x02' || cipher_code == '\x07' || cipher_code == '\x0C') {
+            // ase-xxx-cfb1
+            std::size_t ivec_size = 16;
+            std::size_t key_bits = 256; // aes-256-cfb1
+            if (cipher_code == '\x02') {
+                // aes-128-cfb1
+                key_bits = 128;
             }
-            else if (cipher_code == '\x0C' || cipher_code == '\x0D' || cipher_code == '\x0E') {
-                // ase-ctr
-                std::size_t ivec_size = 16;
-                std::size_t key_bits = 256; // aes-256-ctr
-                if (cipher_code == '\x09') {
-                    // aes-128-ctr
-                    key_bits = 128;
-                }
-                else if (cipher_code == '\x0A') {
-                    // aes-192-ctr
-                    key_bits = 192;
-                }
-                this->encryptor = std::unique_ptr<stream_encryptor>(new aes_ctr128_encryptor(&out_buffer[24], key_bits, &out_buffer[7]));
-                this->decryptor = std::unique_ptr<stream_decryptor>(new aes_ctr128_decryptor(&out_buffer[24], key_bits, &out_buffer[7]));
+            else if (cipher_code == '\x07') {
+                // aes-192-cfb1
+                key_bits = 192;
             }
-        } while (false);
-        if (!success) {
+            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb1_encryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb1_decryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+        }
+        else if (cipher_code == '\x03' || cipher_code == '\x08' || cipher_code == '\x0D') {
+            // ase-xxx-ofb
+            std::size_t ivec_size = 16;
+            std::size_t key_bits = 256; // aes-256-ofb
+            if (cipher_code == '\x03') {
+                // aes-128-ofb
+                key_bits = 128;
+            }
+            else if (cipher_code == '\x08') {
+                // aes-192-ofb
+                key_bits = 192;
+            }
+            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_ofb128_encryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_ofb128_decryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+        }
+        else if (cipher_code == '\x04' || cipher_code == '\x09' || cipher_code == '\x0E') {
+            // ase-xxx-ctr
+            std::size_t ivec_size = 16;
+            std::size_t key_bits = 256; // aes-256-ctr
+            if (cipher_code == '\x04') {
+                // aes-128-ctr
+                key_bits = 128;
+            }
+            else if (cipher_code == '\x09') {
+                // aes-192-ctr
+                key_bits = 192;
+            }
+            std::vector<unsigned char> ivec(ivec_size, 0);
+            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_ctr128_encryptor(&decrypted_cipher_info[23], key_bits, ivec.data()));
+            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_ctr128_decryptor(&decrypted_cipher_info[23], key_bits, ivec.data()));
+        }
+        if (this->encryptor == nullptr || this->decryptor == nullptr) {
             return;
         }
         this->connection_context.connection_state = proxy_connection_state::read_http_request_header;

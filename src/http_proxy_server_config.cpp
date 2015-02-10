@@ -8,11 +8,6 @@
 #include <memory>
 #include <fstream>
 
-extern "C" {
-#include <openssl/rsa.h>
-#include <openssl/pem.h>
-}
-
 #ifdef _WIN32
 #include <Windows.h>
 #else
@@ -23,8 +18,9 @@ extern "C" {
 }
 #endif
 
-#include "jsonxx/jsonxx.h"
+#include "encrypt.hpp"
 #include "http_proxy_server_config.hpp"
+#include "jsonxx/jsonxx.h"
 
 namespace azure_proxy {
 
@@ -58,29 +54,23 @@ bool http_proxy_server_config::load_config(const std::string& config_data)
     else {
         this->config_map["listen_port"] = static_cast<unsigned short>(8090);
     }
-    const std::string& rsa_2048_private_key_base64 = json_obj.get<jsonxx::String>("rsa_2048_private_key");
-    std::string rsa_2048_private_key("-----BEGIN RSA PRIVATE KEY-----\n");
-    for (std::size_t i = 0; i * 64 < rsa_2048_private_key_base64.size(); ++i) {
-        std::size_t length = rsa_2048_private_key_base64.size() - (i * 64) >= 64 ? 64 : rsa_2048_private_key_base64.size() % 64;
-        rsa_2048_private_key.append(rsa_2048_private_key_base64.begin() + i * 64, rsa_2048_private_key_base64.begin() + i * 64 + length);
-        rsa_2048_private_key.push_back('\n');
-    }
-    if (rsa_2048_private_key[rsa_2048_private_key.size() - 1] != '\n') {
-        rsa_2048_private_key.push_back('\n');
-    }
-    rsa_2048_private_key.append("-----END RSA PRIVATE KEY-----\n");
-
-    std::shared_ptr<BIO> bio_handle(BIO_new_mem_buf(const_cast<char*>(rsa_2048_private_key.data()), rsa_2048_private_key.size()), BIO_free);
-    if (!bio_handle) {
-        std::cerr << "Out of memory" << std::endl;
+    if (!json_obj.has<jsonxx::String>("rsa_private_key")) {
+        std::cerr << "Could not find \"rsa_private_key\" in config or it's value is not a string" << std::endl;
         return false;
     }
-    std::shared_ptr<RSA> rsa_handle(PEM_read_bio_RSAPrivateKey(bio_handle.get(), NULL, NULL, NULL), RSA_free);
-    if (!rsa_handle || RSA_size(rsa_handle.get()) != 256) {
-        std::cerr << "The value of rsa_2048_public_key is bad" << std::endl;
+    const std::string& rsa_private_key = json_obj.get<jsonxx::String>("rsa_private_key");
+    try {
+        rsa rsa_pri(rsa_private_key);
+        if (rsa_pri.modulus_size() < 128) {
+            std::cerr << "Must use RSA keys of at least 1024 bits" << std::endl;
+            return false;
+        }
+    }
+    catch (const std::exception&) {
+        std::cerr << "The value of rsa_private_key is bad" << std::endl;
         return false;
     }
-    this->config_map["rsa_2048_private_key"] = rsa_2048_private_key;
+    this->config_map["rsa_private_key"] = rsa_private_key;
     if (json_obj.has<jsonxx::Number>("timeout")) {
         int timeout = static_cast<int>(json_obj.get<jsonxx::Number>("timeout"));
         this->config_map["timeout"] = static_cast<unsigned int>(timeout < 30 ? 30 : timeout);
@@ -169,9 +159,9 @@ unsigned short http_proxy_server_config::get_listen_port() const
     return this->get_config_value<unsigned short>("listen_port");
 }
 
-const std::string& http_proxy_server_config::get_rsa_2048_private_key() const
+const std::string& http_proxy_server_config::get_rsa_private_key() const
 {
-    return this->get_config_value<const std::string&>("rsa_2048_private_key");
+    return this->get_config_value<const std::string&>("rsa_private_key");
 }
 
 unsigned int http_proxy_server_config::get_timeout() const

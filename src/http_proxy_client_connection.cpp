@@ -8,13 +8,6 @@
 #include <algorithm>
 #include <cstring>
 #include <utility>
-#include <vector>
-
-extern "C" {
-#include <openssl/rsa.h>
-#include <openssl/pem.h>
-#include <openssl/md5.h>
-}
 
 #include "http_proxy_client_config.hpp"
 #include "http_proxy_client_connection.hpp"
@@ -47,144 +40,12 @@ std::shared_ptr<http_proxy_client_connection> http_proxy_client_connection::crea
 
 void http_proxy_client_connection::start()
 {
-    auto self(this->shared_from_this());
-    boost::asio::ip::tcp::resolver::query query(http_proxy_client_config::get_instance().get_proxy_server_address(), std::to_string(http_proxy_client_config::get_instance().get_proxy_server_port()));
-    this->connection_state = proxy_connection_state::resolve_proxy_server_address;
-    this->set_timer();
-    this->resolver.async_resolve(query, [this, self](const boost::system::error_code& error, boost::asio::ip::tcp::resolver::iterator iterator) {
-        if (this->cancel_timer()) {
-            if (!error) {
-                this->connection_state = proxy_connection_state::connecte_to_proxy_server;
-                this->set_timer();
-                this->proxy_server_socket.async_connect(*iterator, this->strand.wrap([this, self](const boost::system::error_code& error) {
-                    if (this->cancel_timer()) {
-                        if (!error) {
-                            this->on_connection_established();
-                        }
-                        else {
-                            this->on_error(error);
-                        }
-                    }
-                }));
-            }
-            else {
-                this->on_error(error);
-            }
-        }
-    });
-}
-
-void http_proxy_client_connection::async_read_data_from_user_agent()
-{
-    auto self(this->shared_from_this());
-    this->set_timer();
-    this->user_agent_socket.async_read_some(boost::asio::buffer(this->upgoing_buffer_read), this->strand.wrap([this, self](const boost::system::error_code& error, std::size_t bytes_transferred) {
-        if (this->cancel_timer()) {
-            if (!error) {
-                http_proxy_client_stat::get_instance().on_upgoing_recv(static_cast<std::uint32_t>(bytes_transferred));
-                this->encryptor->encrypt(reinterpret_cast<const unsigned char*>(&this->upgoing_buffer_read[0]), reinterpret_cast<unsigned char*>(&this->upgoing_buffer_write[0]), bytes_transferred);
-                this->async_write_data_to_proxy_server(0, bytes_transferred);
-            }
-            else {
-                this->on_error(error);
-            }
-        }
-    }));
-}
-
-void http_proxy_client_connection::async_read_data_from_proxy_server(bool set_timer)
-{
-    auto self(this->shared_from_this());
-    if (set_timer) {
-        this->set_timer();
-    }
-    this->proxy_server_socket.async_read_some(boost::asio::buffer(this->downgoing_buffer_read), this->strand.wrap([this, self](const boost::system::error_code& error, std::size_t bytes_transferred) {
-        if (this->cancel_timer()) {
-            if (!error) {
-                http_proxy_client_stat::get_instance().on_downgoing_recv(static_cast<std::uint32_t>(bytes_transferred));
-                this->decryptor->decrypt(reinterpret_cast<const unsigned char*>(&this->downgoing_buffer_read[0]), reinterpret_cast<unsigned char*>(&this->downgoing_buffer_write[0]), bytes_transferred);
-                this->async_write_data_to_user_agent(0, bytes_transferred);
-            }
-            else {
-                this->on_error(error);
-            }
-        }
-    }));
-}
-
-void http_proxy_client_connection::async_write_data_to_user_agent(std::size_t offset, std::size_t size)
-{
-    auto self(this->shared_from_this());
-    this->set_timer();
-    this->user_agent_socket.async_write_some(boost::asio::buffer(&this->downgoing_buffer_write[offset], size), this->strand.wrap([this, self, offset, size](const boost::system::error_code& error, std::size_t bytes_transferred) {
-        if (this->cancel_timer()) {
-            if (!error) {
-                http_proxy_client_stat::get_instance().on_downgoing_send(static_cast<std::uint32_t>(bytes_transferred));
-                if (bytes_transferred < size) {
-                    this->async_write_data_to_user_agent(offset + bytes_transferred, size - bytes_transferred);
-                }
-                else {
-                    this->async_read_data_from_proxy_server();
-                }
-            }
-            else {
-                this->on_error(error);
-            }
-        }
-    }));
-}
-
-void http_proxy_client_connection::async_write_data_to_proxy_server(std::size_t offset, std::size_t size)
-{
-    auto self(this->shared_from_this());
-    this->set_timer();
-    this->proxy_server_socket.async_write_some(boost::asio::buffer(&this->upgoing_buffer_write[offset], size), this->strand.wrap([this, self, offset, size](const boost::system::error_code& error, std::size_t bytes_transferred) {
-        if (this->cancel_timer()) {
-            if (!error) {
-                http_proxy_client_stat::get_instance().on_upgoing_send(static_cast<std::uint32_t>(bytes_transferred));
-                if (bytes_transferred < size) {
-                    this->async_write_data_to_proxy_server(offset + bytes_transferred, size - bytes_transferred);
-                }
-                else {
-                    this->async_read_data_from_user_agent();
-                }
-            }
-            else {
-                if (error != boost::asio::error::eof) {
-                }
-                this->on_error(error);
-            }
-        }
-    }));
-}
-
-void http_proxy_client_connection::set_timer()
-{
-    if (this->timer.expires_from_now(this->timeout) != 0) {
-        assert(false);
-    }
-    auto self(this->shared_from_this());
-    this->timer.async_wait(this->strand.wrap([this, self](const boost::system::error_code& error) {
-        if (error != boost::asio::error::operation_aborted) {
-            this->on_timeout();
-        }
-    }));
-}
-
-bool http_proxy_client_connection::cancel_timer()
-{
-    std::size_t ret = this->timer.cancel();
-    assert(ret <= 1);
-    return ret == 1;
-}
-
-void http_proxy_client_connection::on_connection_established()
-{
-    std::memset(&this->upgoing_buffer_read[0], 0, 256);
+    std::array<unsigned char, 86> cipher_info_raw;
+    cipher_info_raw.fill(0);
     // 1 ~ 3
-    this->upgoing_buffer_read[0] = 'A';
-    this->upgoing_buffer_read[1] = 'H';
-    this->upgoing_buffer_read[2] = 'P';
+    cipher_info_raw[0] = 'A';
+    cipher_info_raw[1] = 'H';
+    cipher_info_raw[2] = 'P';
 
     // 3 zero
     // 4 zero
@@ -205,7 +66,7 @@ void http_proxy_client_connection::on_connection_established()
     // 0x0C aes-256-cfb1
     // 0x0D aes-256-ofb
     // 0x0E aes-256-ctr
-   
+
     unsigned char cipher_code = 0;
     const auto& cipher_name = http_proxy_client_config::get_instance().get_cipher();
     if (cipher_name.size() > 7 && std::equal(cipher_name.begin(), cipher_name.begin() + 3, "aes")) {
@@ -270,7 +131,7 @@ void http_proxy_client_connection::on_connection_established()
             this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb1_encryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
             this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb1_decryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
         }
-        else if (std::strcmp(cipher_name.c_str() + 8, "ofb")) {
+        else if (std::strcmp(cipher_name.c_str() + 8, "ofb") == 0) {
             // aes-xxx-ofb
             if (std::equal(cipher_name.begin() + 4, cipher_name.begin() + 7, "128")) {
                 cipher_code = 0x03;
@@ -289,7 +150,7 @@ void http_proxy_client_connection::on_connection_established()
             this->encryptor = std::unique_ptr<stream_encryptor>(new aes_ofb128_encryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
             this->decryptor = std::unique_ptr<stream_decryptor>(new aes_ofb128_decryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
         }
-        else if (std::strcmp(cipher_name.c_str() + 8, "ctr")) {
+        else if (std::strcmp(cipher_name.c_str() + 8, "ctr") == 0) {
             // aes-xxx-ctr
             if (std::equal(cipher_name.begin() + 4, cipher_name.begin() + 7, "128")) {
                 cipher_code = 0x04;
@@ -308,51 +169,166 @@ void http_proxy_client_connection::on_connection_established()
             this->encryptor = std::unique_ptr<stream_encryptor>(new aes_ctr128_encryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
             this->decryptor = std::unique_ptr<stream_decryptor>(new aes_ctr128_decryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
         }
-        // 7 ~ 23 ivec
-        std::copy(ivec.cbegin(), ivec.cend(), reinterpret_cast<unsigned char*>(&this->upgoing_buffer_read[7]));
-        std::copy(key_vec.cbegin(), key_vec.cend(), reinterpret_cast<unsigned char*>(&this->upgoing_buffer_read[24]));
+        // 7 ~ 22 ivec
+        // 23 ~ key
+        std::copy(ivec.cbegin(), ivec.cend(), cipher_info_raw.begin() + 7);
+        std::copy(key_vec.cbegin(), key_vec.cend(), cipher_info_raw.begin() + 23);
     }
-
-    bool close = true;
-    std::shared_ptr<bool> auto_close(&close, [this](bool* close) {
-        if (*close) {
-            boost::system::error_code ec;
-            if (this->proxy_server_socket.is_open()) {
-                this->proxy_server_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-                this->proxy_server_socket.close(ec);
-            }
-            if (this->user_agent_socket.is_open()) {
-                this->user_agent_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-                this->user_agent_socket.close(ec);
-            }
-        }
-    });
 
     if (!this->encryptor || !this->decryptor) {
         return;
     }
 
-    this->upgoing_buffer_read[5] = static_cast<char>(cipher_code); 
+    // 5 cipher code
+    cipher_info_raw[5] = static_cast<char>(cipher_code); 
+
     // 6 zero
 
-    // 240 ~ 255 md5 check sum
-    if (NULL == MD5(reinterpret_cast<unsigned char*>(&this->upgoing_buffer_read[0]), 240, reinterpret_cast<unsigned char*>(&this->upgoing_buffer_read[240]))) {
+    rsa rsa_pub(http_proxy_client_config::get_instance().get_rsa_public_key());
+    if (rsa_pub.modulus_size() < 128) {
         return;
     }
 
-    std::string public_key = http_proxy_client_config::get_instance().get_rsa_2048_public_key();
-    std::shared_ptr<BIO> bio_handle(BIO_new_mem_buf(const_cast<char*>(public_key.data()), public_key.size()), BIO_free);
-    if (!bio_handle) {
+    this->encrypted_cipher_info.resize(rsa_pub.modulus_size());
+    if(this->encrypted_cipher_info.size() != rsa_pub.encrypt(cipher_info_raw.size(), cipher_info_raw.data(), this->encrypted_cipher_info.data(), rsa_padding::pkcs1_oaep_padding)) {
         return;
     }
-    std::shared_ptr<RSA> rsa_handle(PEM_read_bio_RSA_PUBKEY(bio_handle.get(), NULL, NULL, NULL), RSA_free);
-    if (!rsa_handle || RSA_size(rsa_handle.get()) != 256) {
-        return;
-    }
-    RSA_public_encrypt(256, reinterpret_cast<unsigned char*>(&this->upgoing_buffer_read[0]), reinterpret_cast<unsigned char*>(&this->upgoing_buffer_write[0]), rsa_handle.get(), RSA_NO_PADDING);
-    close = false;
 
-    this->async_write_data_to_proxy_server(0, 256);
+    auto self(this->shared_from_this());
+    boost::asio::ip::tcp::resolver::query query(http_proxy_client_config::get_instance().get_proxy_server_address(), std::to_string(http_proxy_client_config::get_instance().get_proxy_server_port()));
+    this->connection_state = proxy_connection_state::resolve_proxy_server_address;
+    this->set_timer();
+    this->resolver.async_resolve(query, [this, self](const boost::system::error_code& error, boost::asio::ip::tcp::resolver::iterator iterator) {
+        if (this->cancel_timer()) {
+            if (!error) {
+                this->connection_state = proxy_connection_state::connecte_to_proxy_server;
+                this->set_timer();
+                this->proxy_server_socket.async_connect(*iterator, this->strand.wrap([this, self](const boost::system::error_code& error) {
+                    if (this->cancel_timer()) {
+                        if (!error) {
+                            this->on_connection_established();
+                        }
+                        else {
+                            this->on_error(error);
+                        }
+                    }
+                }));
+            }
+            else {
+                this->on_error(error);
+            }
+        }
+    });
+}
+
+void http_proxy_client_connection::async_read_data_from_user_agent()
+{
+    auto self(this->shared_from_this());
+    this->set_timer();
+    this->user_agent_socket.async_read_some(boost::asio::buffer(this->upgoing_buffer_read), this->strand.wrap([this, self](const boost::system::error_code& error, std::size_t bytes_transferred) {
+        if (this->cancel_timer()) {
+            if (!error) {
+                http_proxy_client_stat::get_instance().on_upgoing_recv(static_cast<std::uint32_t>(bytes_transferred));
+                this->encryptor->encrypt(reinterpret_cast<const unsigned char*>(&this->upgoing_buffer_read[0]), reinterpret_cast<unsigned char*>(&this->upgoing_buffer_write[0]), bytes_transferred);
+                this->async_write_data_to_proxy_server(this->upgoing_buffer_write.data(), 0, bytes_transferred);
+            }
+            else {
+                this->on_error(error);
+            }
+        }
+    }));
+}
+
+void http_proxy_client_connection::async_read_data_from_proxy_server(bool set_timer)
+{
+    auto self(this->shared_from_this());
+    if (set_timer) {
+        this->set_timer();
+    }
+    this->proxy_server_socket.async_read_some(boost::asio::buffer(this->downgoing_buffer_read), this->strand.wrap([this, self](const boost::system::error_code& error, std::size_t bytes_transferred) {
+        if (this->cancel_timer()) {
+            if (!error) {
+                http_proxy_client_stat::get_instance().on_downgoing_recv(static_cast<std::uint32_t>(bytes_transferred));
+                this->decryptor->decrypt(reinterpret_cast<const unsigned char*>(&this->downgoing_buffer_read[0]), reinterpret_cast<unsigned char*>(&this->downgoing_buffer_write[0]), bytes_transferred);
+                this->async_write_data_to_user_agent(this->downgoing_buffer_write.data(), 0, bytes_transferred);
+            }
+            else {
+                this->on_error(error);
+            }
+        }
+    }));
+}
+
+void http_proxy_client_connection::async_write_data_to_user_agent(const char* write_buffer, std::size_t offset, std::size_t size)
+{
+    auto self(this->shared_from_this());
+    this->set_timer();
+    this->user_agent_socket.async_write_some(boost::asio::buffer(write_buffer + offset, size),
+        this->strand.wrap([this, self, write_buffer, offset, size](const boost::system::error_code& error, std::size_t bytes_transferred) {
+        if (this->cancel_timer()) {
+            if (!error) {
+                http_proxy_client_stat::get_instance().on_downgoing_send(static_cast<std::uint32_t>(bytes_transferred));
+                if (bytes_transferred < size) {
+                    this->async_write_data_to_user_agent(write_buffer, offset + bytes_transferred, size - bytes_transferred);
+                }
+                else {
+                    this->async_read_data_from_proxy_server();
+                }
+            }
+            else {
+                this->on_error(error);
+            }
+        }
+    }));
+}
+
+void http_proxy_client_connection::async_write_data_to_proxy_server(const char* write_buffer, std::size_t offset, std::size_t size)
+{
+    auto self(this->shared_from_this());
+    this->set_timer();
+    this->proxy_server_socket.async_write_some(boost::asio::buffer(write_buffer + offset, size),
+        this->strand.wrap([this, self, write_buffer, offset, size](const boost::system::error_code& error, std::size_t bytes_transferred) {
+            if (this->cancel_timer()) {
+                if (!error) {
+                    http_proxy_client_stat::get_instance().on_upgoing_send(static_cast<std::uint32_t>(bytes_transferred));
+                    if (bytes_transferred < size) {
+                        this->async_write_data_to_proxy_server(write_buffer, offset + bytes_transferred, size - bytes_transferred);
+                    }
+                    else {
+                        this->async_read_data_from_user_agent();
+                    }
+                }
+                else {
+                    this->on_error(error);
+                }
+            }
+        })
+    );
+}
+
+void http_proxy_client_connection::set_timer()
+{
+    if (this->timer.expires_from_now(this->timeout) != 0) {
+        assert(false);
+    }
+    auto self(this->shared_from_this());
+    this->timer.async_wait(this->strand.wrap([this, self](const boost::system::error_code& error) {
+        if (error != boost::asio::error::operation_aborted) {
+            this->on_timeout();
+        }
+    }));
+}
+
+bool http_proxy_client_connection::cancel_timer()
+{
+    std::size_t ret = this->timer.cancel();
+    assert(ret <= 1);
+    return ret == 1;
+}
+
+void http_proxy_client_connection::on_connection_established()
+{
+    this->async_write_data_to_proxy_server(reinterpret_cast<const char*>(this->encrypted_cipher_info.data()), 0, this->encrypted_cipher_info.size());
     this->async_read_data_from_proxy_server(false);
 }
 

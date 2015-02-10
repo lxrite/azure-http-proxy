@@ -11,6 +11,7 @@
 #include <array>
 #include <chrono>
 #include <memory>
+#include <vector>
 
 #include <boost/asio.hpp>
 
@@ -34,6 +35,7 @@ private:
     boost::asio::ip::tcp::resolver resolver;
     proxy_connection_state connection_state;
     boost::asio::basic_waitable_timer<std::chrono::steady_clock> timer;
+    std::vector<unsigned char> encrypted_cipher_info;
     std::array<char, BUFFER_LENGTH> upgoing_buffer_read;
     std::array<char, BUFFER_LENGTH> upgoing_buffer_write;
     std::array<char, BUFFER_LENGTH> downgoing_buffer_read;
@@ -50,8 +52,8 @@ public:
 private:    
     void async_read_data_from_user_agent();
     void async_read_data_from_proxy_server(bool set_timer = true);
-    void async_write_data_to_user_agent(std::size_t offset, std::size_t size);
-    void async_write_data_to_proxy_server(std::size_t offset, std::size_t size);
+    void async_write_data_to_user_agent(const char* write_buffer, std::size_t offset, std::size_t size);
+    void async_write_data_to_proxy_server(const char* write_buffer, std::size_t offset, std::size_t size);
 
     void set_timer();
     bool cancel_timer();

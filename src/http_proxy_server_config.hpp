@@ -35,7 +35,7 @@ public:
     bool load_config();
     const std::string& get_bind_address() const;
     unsigned short get_listen_port() const;
-    const std::string& get_rsa_2048_private_key() const;
+    const std::string& get_rsa_private_key() const;
     unsigned int get_timeout() const;
     unsigned int get_workers() const;
 
