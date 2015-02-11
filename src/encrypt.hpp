@@ -147,7 +147,7 @@ public:
 
     virtual void encrypt(const unsigned char* in, unsigned char* out, std::size_t length) {
         assert(in && out);
-        AES_cfb1_encrypt(in, out, length, &this->aes_ctx, this->ivec, &this->num, AES_ENCRYPT);
+        AES_cfb1_encrypt(in, out, length * 8, &this->aes_ctx, this->ivec, &this->num, AES_ENCRYPT);
     }
 
     virtual ~aes_cfb1_encryptor() {
@@ -180,7 +180,7 @@ public:
 
     virtual void decrypt(const unsigned char* in, unsigned char* out, std::size_t length) {
         assert(in && out);
-        AES_cfb1_encrypt(in, out, length, &this->aes_ctx, this->ivec, &this->num, AES_DECRYPT);
+        AES_cfb1_encrypt(in, out, length * 8, &this->aes_ctx, this->ivec, &this->num, AES_DECRYPT);
     }
 
     virtual ~aes_cfb1_decryptor() {
