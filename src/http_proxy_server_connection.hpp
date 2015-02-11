@@ -65,7 +65,7 @@ private:
     void set_timer();
     bool cancel_timer();
 
-    void on_resolved(boost::asio::ip::tcp::resolver::iterator iterator);
+    void on_resolved(boost::asio::ip::tcp::resolver::iterator endpoint_iterator);
     void on_connect();
     void on_proxy_client_data_arrived(std::size_t bytes_transferred);
     void on_origin_server_data_arrived(std::size_t bytes_transferred);

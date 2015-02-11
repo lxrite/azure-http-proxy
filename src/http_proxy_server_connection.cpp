@@ -89,18 +89,18 @@ void http_proxy_server_connection::async_read_data_from_origin_server(bool set_t
 
 void http_proxy_server_connection::async_connect_to_origin_server()
 {
-    if (this->origin_server_socket.is_open()) {
-        if (this->request_header->method() == "CONNECT" ||
-            this->request_header->host() != this->connection_context.origin_server_name ||
-            this->request_header->port() != this->connection_context.origin_server_port) {
-                boost::system::error_code ec;
-                this->origin_server_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-                this->origin_server_socket.close(ec);
-        }
-    }
-    
     this->connection_context.reconnect_on_error = false;
     if (this->origin_server_socket.is_open()) {
+        if (this->request_header->method() == "CONNECT") {
+            boost::system::error_code ec;
+            this->origin_server_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+            this->origin_server_socket.close(ec);
+        }
+    }
+
+    if (this->origin_server_socket.is_open() &&
+        this->request_header->host() == this->connection_context.origin_server_name &&
+        this->request_header->port() == this->connection_context.origin_server_port) {
         this->connection_context.reconnect_on_error = true;
         this->on_connect();
     }
@@ -317,20 +317,39 @@ bool http_proxy_server_connection::cancel_timer()
     return ret == 1;
 }
 
-void http_proxy_server_connection::on_resolved(boost::asio::ip::tcp::resolver::iterator iterator)
+void http_proxy_server_connection::on_resolved(boost::asio::ip::tcp::resolver::iterator endpoint_iterator)
 {
-    auto endpoint = iterator->endpoint();
+    if (this->origin_server_socket.is_open()) {
+        for (auto iter = endpoint_iterator; iter != boost::asio::ip::tcp::resolver::iterator(); ++iter) {
+            if (this->connection_context.origin_server_endpoint == iter->endpoint()) {
+                this->connection_context.reconnect_on_error = true;
+                this->on_connect();
+                return;
+            }
+            boost::system::error_code ec;
+            this->origin_server_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+            this->origin_server_socket.close(ec);
+        }
+    }
+    this->connection_context.origin_server_endpoint = endpoint_iterator->endpoint();
     auto self(this->shared_from_this());
     this->connection_context.connection_state = proxy_connection_state::connect_to_origin_server;
     this->set_timer();
-    this->origin_server_socket.async_connect(endpoint,
-        this->strand.wrap([this, self](const boost::system::error_code& error) {
+    this->origin_server_socket.async_connect(endpoint_iterator->endpoint(),
+        this->strand.wrap([this, self, endpoint_iterator](const boost::system::error_code& error) mutable {
             if (this->cancel_timer()) {
                 if (!error) {
                     this->on_connect();
                 }
                 else {
-                    this->on_error(error);
+                    boost::system::error_code ec;
+                    this->origin_server_socket.close(ec);
+                    if (++endpoint_iterator != boost::asio::ip::tcp::resolver::iterator()) {
+                        this->on_resolved(endpoint_iterator);
+                    }
+                    else {
+                        this->on_error(error);
+                    }
                 }
             }
         })
