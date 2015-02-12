@@ -85,6 +85,12 @@ bool http_proxy_server_config::load_config(const std::string& config_data)
     else {
         this->config_map["workers"] = 4ul;
     }
+    if (json_obj.has<jsonxx::Boolean>("auth")) {
+        this->config_map["auth"] = json_obj.get<jsonxx::Boolean>("auth");
+    }
+    else {
+        this->config_map["auth"] = false;
+    }
 
     rollback = false;
     return true;
@@ -172,6 +178,11 @@ unsigned int http_proxy_server_config::get_timeout() const
 unsigned int http_proxy_server_config::get_workers() const
 {
     return this->get_config_value<unsigned int>("workers");
+}
+
+bool http_proxy_server_config::enable_auth() const
+{
+    return this->get_config_value<bool>("auth");
 }
 
 http_proxy_server_config& http_proxy_server_config::get_instance()

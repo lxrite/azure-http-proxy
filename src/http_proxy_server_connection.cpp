@@ -10,6 +10,7 @@
 #include <cassert>
 #include <cstring>
 
+#include "authentication.hpp"
 #include "http_proxy_server_config.hpp"
 #include "http_proxy_server_connection.hpp"
 
@@ -137,6 +138,7 @@ void http_proxy_server_connection::async_write_request_header_to_origin_server()
     this->modified_request_data += "\r\n"; 
 
     this->request_header->erase_header("Proxy-Connection");
+    this->request_header->erase_header("Proxy-Authorization");
 
     for (const auto& header: this->request_header->get_headers_map()) {
         this->modified_request_data += std::get<0>(header);
@@ -295,6 +297,32 @@ void http_proxy_server_connection::report_error(const std::string& status_code, 
     this->connection_context.connection_state = proxy_connection_state::report_error;
     auto self(this->shared_from_this());
     this->async_write_data_to_proxy_client(this->modified_response_data.data(), 0 ,this->modified_response_data.size());
+}
+
+void http_proxy_server_connection::report_authentication_failed()
+{
+    std::string content = "<!DOCTYPE html><html><head><title>407 Proxy Authentication Required</title></head>";
+    content += "<body bgcolor=\"white\"><center><h1>407 Proxy Authentication Required</h1></center><hr><center>azure http proxy server</center></body></html>";
+    this->modified_response_data = "HTTP/1.1 407 Proxy Authentication Required\r\n";
+    this->modified_response_data += "Server: AzureHttpProxy\r\n";
+    this->modified_response_data += "Proxy-Authenticate: Basic realm=\"AzureHttpProxy\"\r\n";
+    this->modified_response_data += "Content-Type: text/html\r\n";
+    this->modified_response_data += "Connection: Close\r\n";
+    this->modified_response_data += "Content-Length: ";
+    this->modified_response_data += std::to_string(content.size());
+    this->modified_response_data += "\r\n\r\n";
+    this->modified_response_data += content;
+    unsigned char temp_buffer[16];
+    for (std::size_t i = 0; i * 16 < this->modified_response_data.size(); ++i) {
+        std::size_t block_length = 16;
+        if (this->modified_response_data.size() - i * 16 < 16) {
+            block_length = this->modified_response_data.size() % 16;
+        }
+        this->encryptor->encrypt(reinterpret_cast<const unsigned char*>(&this->modified_response_data[i * 16]), temp_buffer, block_length);
+        std::copy(temp_buffer, temp_buffer + block_length, reinterpret_cast<unsigned char*>(&this->modified_response_data[i * 16]));
+    }
+    this->connection_context.connection_state = proxy_connection_state::report_error;
+    this->async_write_data_to_proxy_client(this->modified_response_data.data(), 0, this->modified_response_data.size());
 }
 
 void http_proxy_server_connection::set_timer()
@@ -534,6 +562,21 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
             this->report_error("505", "HTTP Version Not Supported", std::string());
             return;
         }
+
+        if (http_proxy_server_config::get_instance().enable_auth()) {
+            auto proxy_authorization_value = this->request_header->get_header_value("Proxy-Authorization");
+            bool auth_success = false;
+            if (proxy_authorization_value) {
+                if (authentication::get_instance().auth(*proxy_authorization_value) == auth_result::ok) {
+                    auth_success = true;
+                }
+            }
+            if (!auth_success) {
+                this->report_authentication_failed();
+                return;
+            }
+        }
+
         if (this->request_header->method() == "CONNECT") {
             this->async_connect_to_origin_server();
             return;

@@ -38,6 +38,7 @@ public:
     const std::string& get_rsa_private_key() const;
     unsigned int get_timeout() const;
     unsigned int get_workers() const;
+    bool enable_auth() const;
 
     static http_proxy_server_config& get_instance();
 };

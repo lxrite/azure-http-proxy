@@ -17,5 +17,5 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 add_executable(ahpc src/http_proxy_client_main.cpp src/http_proxy_client.cpp src/http_proxy_client_stat.cpp src/http_proxy_client_config.cpp src/http_proxy_client_connection.cpp src/jsonxx/jsonxx.cc)
 target_link_libraries(ahpc ${Boost_SYSTEM_LIBRARY} ${OPENSSL_CRYPTO_LIBRARIES} pthread)
 
-add_executable(ahps src/http_proxy_server_main.cpp src/http_proxy_server.cpp src/http_proxy_server_config.cpp src/http_proxy_server_connection.cpp src/http_header_parser.cpp src/jsonxx/jsonxx.cc)
+add_executable(ahps src/http_proxy_server_main.cpp src/http_proxy_server.cpp src/http_proxy_server_config.cpp src/http_proxy_server_connection.cpp src/http_header_parser.cpp src/base64.cpp src/authentication.cpp src/jsonxx/jsonxx.cc)
 target_link_libraries(ahps ${Boost_SYSTEM_LIBRARY} ${OPENSSL_CRYPTO_LIBRARIES} pthread)
