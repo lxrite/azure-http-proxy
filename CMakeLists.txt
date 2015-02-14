@@ -9,6 +9,10 @@ find_package(OpenSSL REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIR})
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_definitions(-DBOOST_ASIO_HAS_MOVE)
+endif()
+
 include_directories(${OPENSSL_INCLUDE_DIR})
 link_directories(${OPENSSL_LIBRARY_DIR})
 
