@@ -225,7 +225,7 @@ void http_proxy_client_connection::async_read_data_from_user_agent()
 {
     auto self(this->shared_from_this());
     this->set_timer();
-    this->user_agent_socket.async_read_some(boost::asio::buffer(this->upgoing_buffer_read), this->strand.wrap([this, self](const boost::system::error_code& error, std::size_t bytes_transferred) {
+    this->user_agent_socket.async_read_some(boost::asio::buffer(this->upgoing_buffer_read.data(), this->upgoing_buffer_read.size()), this->strand.wrap([this, self](const boost::system::error_code& error, std::size_t bytes_transferred) {
         if (this->cancel_timer()) {
             if (!error) {
                 http_proxy_client_stat::get_instance().on_upgoing_recv(static_cast<std::uint32_t>(bytes_transferred));
@@ -245,7 +245,7 @@ void http_proxy_client_connection::async_read_data_from_proxy_server(bool set_ti
     if (set_timer) {
         this->set_timer();
     }
-    this->proxy_server_socket.async_read_some(boost::asio::buffer(this->downgoing_buffer_read), this->strand.wrap([this, self](const boost::system::error_code& error, std::size_t bytes_transferred) {
+    this->proxy_server_socket.async_read_some(boost::asio::buffer(this->downgoing_buffer_read.data(), this->downgoing_buffer_read.size()), this->strand.wrap([this, self](const boost::system::error_code& error, std::size_t bytes_transferred) {
         if (this->cancel_timer()) {
             if (!error) {
                 http_proxy_client_stat::get_instance().on_downgoing_recv(static_cast<std::uint32_t>(bytes_transferred));
