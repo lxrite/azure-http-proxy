@@ -111,7 +111,7 @@ http_headers_container http_header_parser::parse_headers(std::string::const_iter
         return '0' <= ch && ch <= '9';
     };
     auto is_alpha = [](char ch) -> bool {
-        return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z';
+        return ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z');
     };
     auto is_token_char = [&is_alpha, &is_digit](char ch) -> bool {
         return is_alpha(ch) || is_digit(ch) || (
