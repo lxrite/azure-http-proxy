@@ -3,7 +3,7 @@ project(azure-http-proxy)
 
 set(Boost_USE_MULTITHREAD ON)
 
-find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED COMPONENTS system regex)
 find_package(OpenSSL REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIR})
@@ -25,4 +25,4 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 add_executable(ahps src/http_proxy_server_main.cpp src/http_proxy_server.cpp src/http_proxy_server_config.cpp src/http_proxy_server_connection.cpp src/http_header_parser.cpp src/base64.cpp src/authentication.cpp src/jsonxx/jsonxx.cc)
-target_link_libraries(ahps ${Boost_SYSTEM_LIBRARY} ${OPENSSL_CRYPTO_LIBRARIES} pthread)
+target_link_libraries(ahps ${Boost_SYSTEM_LIBRARY} ${Boost_REGEX_LIBRARY} ${OPENSSL_CRYPTO_LIBRARIES} pthread)

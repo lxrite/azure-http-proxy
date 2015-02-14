@@ -6,7 +6,7 @@
  */
 
 #include <iterator>
-#include <regex>
+#include <boost/regex.hpp>
 
 #include "http_header_parser.hpp"
 
@@ -242,9 +242,9 @@ boost::optional<http_request_header> http_header_parser::parse_request_header(st
     if (iter == tmp || iter == end || *iter != ' ') return nullptr;
     auto request_uri = std::string(tmp, iter);
     if (header.method() == "CONNECT") {
-        std::regex regex("(.+?):(\\d+)");
-        std::match_results<std::string::iterator> match_results;
-        if (!std::regex_match(request_uri.begin(), request_uri.end(), match_results, regex)) {
+        boost::regex regex("(.+?):(\\d+)");
+        boost::match_results<std::string::iterator> match_results;
+        if (!boost::regex_match(request_uri.begin(), request_uri.end(), match_results, regex)) {
             return nullptr;
         }
         header._host = match_results[1];
@@ -256,9 +256,9 @@ boost::optional<http_request_header> http_header_parser::parse_request_header(st
         }
     }
     else {
-        std::regex regex("(.+?)://(.+?)(:(\\d+))?(/.*)");
-        std::match_results<std::string::iterator> match_results;
-        if (!std::regex_match(request_uri.begin(), request_uri.end(), match_results, regex)) {
+        boost::regex regex("(.+?)://(.+?)(:(\\d+))?(/.*)");
+        boost::match_results<std::string::iterator> match_results;
+        if (!boost::regex_match(request_uri.begin(), request_uri.end(), match_results, regex)) {
             return nullptr;
         }
         header._scheme = match_results[1];
