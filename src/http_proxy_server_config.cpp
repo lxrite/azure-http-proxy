@@ -18,6 +18,7 @@ extern "C" {
 }
 #endif
 
+#include "authentication.hpp"
 #include "encrypt.hpp"
 #include "http_proxy_server_config.hpp"
 #include "jsonxx/jsonxx.h"
@@ -34,6 +35,7 @@ bool http_proxy_server_config::load_config(const std::string& config_data)
     std::shared_ptr<bool> auto_rollback(&rollback, [this](bool* rollback) {
         if (*rollback) {
             this->config_map.clear();
+            authentication::get_instance().remove_all_users();
         }
     });
 
@@ -87,6 +89,19 @@ bool http_proxy_server_config::load_config(const std::string& config_data)
     }
     if (json_obj.has<jsonxx::Boolean>("auth")) {
         this->config_map["auth"] = json_obj.get<jsonxx::Boolean>("auth");
+        if (!json_obj.has<jsonxx::Array>("users")) {
+            std::cerr << "Could not find \"users\" in config or it's value is not a array" << std::endl;
+            return false;
+        }
+        const jsonxx::Array& users_array = json_obj.get<jsonxx::Array>("users");
+        for (size_t i = 0; i < users_array.size(); ++i) {
+            if (!users_array.has<jsonxx::Object>(i) || !users_array.get<jsonxx::Object>(i).has<jsonxx::String>("username") || !users_array.get<jsonxx::Object>(i).has<jsonxx::String>("username")) {
+                std::cerr << "The value of \"users\" contains unexpected element" << std::endl;
+                return false;
+            }
+            authentication::get_instance().add_user(users_array.get<jsonxx::Object>(i).get<jsonxx::String>("username"),
+                users_array.get<jsonxx::Object>(i).get<jsonxx::String>("password"));
+        }
     }
     else {
         this->config_map["auth"] = false;
