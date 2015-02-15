@@ -27,6 +27,8 @@ AHP使用了部分C++11特性，所以要求对编译器的版本有较高要求
 
 ### 安装依赖
 
+Windows如果不想编译可以从 https://github.com/lxrite/azure-http-proxy/releases 下载已经编译好的(win32-binary.zip)。
+
 AHP依赖Boost和OpenSSL库，且要求Boost库版本不低于1.52
 
 绝大多数Linux发行版都可以通过包管理安装Boost和OpenSSL
