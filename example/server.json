@@ -1,0 +1,18 @@
+{
+    "bind_address": "0.0.0.0",
+    "listen_port": 8090,
+    "rsa_private_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAxPbPBU61RYBI0rUDVso+TzkQ7bXO1j4GWxbYZ3nEL6sLbrft\nv7rpYq5uPLi9DdJ3ZoEUjxlnO+VUOOtm7LpRGmWqUQdNnYHuiZU1UuH7pDIXejQw\nwSC698FB1kwnoxV4LICkiA1a4qucqlnG8nN6gBFs3/1K2DuUs0Hg1hZKlkOq/ONR\n82XGhXkB/HVwmfgQlZpVbWHQDsZiOv1SUnQW8Zs6E/JmW6llBkWtsQT9nQ2uzcV1\nJGzV0ltB4N0CMC8u2zv/LLTSgS4IKrVicAqO9TWkGOFmGowV7PpEAEQC1WcBXThL\npUYk2QqiSvTTLTdFNmwEH+hKa1ZBPqOcaTA1dQIDAQABAoIBAQC0FTSSlbQHJ5Nt\nkzLKV39Az9w6es/x8iO9hNW3Rg2px6lcQa6ObkaUgwcnXYD88kFY5wv1CjTo/nRS\n1mf0aSVeDTX7f8HnELUX9eQbM6LwLRxqDu3EpjhL7dZUKKzU3vxRNA06l3tRY7aJ\nyiur4QlPrp7s7JlRuqfqfYEkPJ1VZE5CN/0chY21rD9nK30Y9+Rttq/oIW0NyK74\nOJYgottIoiBRwgc2ZTxXalWq5yKWXBVZZlcTSOxH8lmDY5Z0md2oYfgTBqUUEzlz\nLm9S88+ydBtUVXSlDN4PPh+N3arshFnRZBAxNtxiIGi4PYfYJmb2U6a1lq0nj12g\nKs6Wk0QBAoGBAOiiJBdhy3iL/29Z7floQoa5iQgPxsSh8hv6jgIos7B2n/Nkre68\ngK/ULw9utsj/lq6Lg9amMPv+hW4rbdL88UfQFFcvjixhgqk9RNNvt51Lg03AIM6w\npF+FPWqQOisrQmPgxWnKNoIZsfEayBm/mTPHk6VBIVq7HmeF9hxMjcilAoGBANi/\nes4zzfB7PmvuBJxLHe6YWIqNCk8aS/uZ4gZMGN9stLFOZPeeshhlq4OTu7m37MzD\nD5RERDFA3y+OnpUnsB5nXwYqIslIPQ1H6WeNia/xusE45OthbBu6ZgpDI6TmTQ5S\nAfLJMIaurkxSzi9jtotCtYVQ8iBvXIlVqNuAFlCRAoGAUepONSGNiTwazPXosysA\nSfppAzqy7ihsXWfDu4TjiR6sQgNQr8EWu1NG4vNET9CYGYws91d75jAAggOu312M\nBJKDpxOqx3vqi3d0ldM/35ZofOdLZhyTNMNxFeYFZZANB6htO0wmF3e+zbx1e4OZ\nCb+cANPHT/CVyzRDrkFSp7UCgYAaPjzhQJZ7uoBZUw1N2y55mAqIZAFOiJGQmhYq\nywXr716FZUeGT7miiJTWrol5OBK8zBVTz1wuVntvZ6Y9yvthAwUXWvyxQETcGcvh\n1NpJ6kvBX2EgOsB7Lvtx3KUxLw0/YaCIw+FTPU0vQotiY4FTpTUTOjTGxpT+r9dt\nFDofcQKBgCy5lnl7oAEK7sPNSxjyi1jELBcMl6bcE6sLkyXli7gpQn33NEFKEM16\nSfKNttCJFKx+3LtJNjMZ6xKQsEGHAQTXu9MxDd+g16ws8W+tIeMLf+Hn+sI+UFND\nfToIgs+zqOC67B/MVPDtRkJskhcUFRjqmcFGJIlkK9TiYHQm1ldW\n-----END RSA PRIVATE KEY-----",
+    "timeout": 240,
+    "workers": 4,
+    "auth": true,
+    "users": [
+        {
+            "username": "username1",
+            "password": "password1"
+        },
+        {
+            "username": "foobar",
+            "password": "bazqux"
+        }
+    ]
+}
