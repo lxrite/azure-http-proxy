@@ -4,7 +4,13 @@
 
 AHP(Azure Http Proxy)是一款高速、安全、轻量级和跨平台的HTTP代理，使用对称加密算法AES对传输的数据进行加密，使用非对称加密算法RSA传输密钥。
 
-HTTP代理对域名的解析是在服务端进行的，所以AHP还能解决本地DNS污染问题。
+## 特性
+ - 一连接一密钥，AHP会对每个连接使用一个随机生成的密钥和初始化向量，避免重复使用同一密钥
+ - 使用非对称加密算法RSA传输密钥，只需对客户端公开RSA公钥
+ - 对目标域名的解析在服务端进行，可以解决本地DNS污染的问题
+ - 服务端同时支持多种数据加密方式，数据加密方式可由客户端任意指定，客户端可以权衡机器性能以及安全需求选择合适的加密方式
+ - 多线程并发处理，充分利用多处理器的优势，能同时处理成千上万的并发连接
+ - 多用户支持，允许为每个用户使用独立的帐号和密码
 
 ## 编译和安装
 
@@ -57,10 +63,14 @@ Windows下可以使用cmake-gui.exe，Linux或其他类Unix系统可以使用下
 如果编译成功会生成ahpc（客户端）和ahps（服务端）。
 ## 配置和运行
 
+完整的配置示例见这里： https://github.com/lxrite/azure-http-proxy/tree/master/example
+
+注意：不要使用示例配置中的RSA私钥和公钥，因为私钥一公开就是不安全的了。
+
 如果你要运行的是服务端，那么你首先需要生成一对RSA密钥对，AHP支持任意长度不小于1024位的RSA密钥。下面的命令使用openssl生成2048位的私钥和公钥
 
-    openssl genrsa -out rsa_private_key.pem 204
-    openssl rsa -in rsa_private_key.pem -pubout -out rsa_public_key.pem
+    $ openssl genrsa -out rsa_private_key.pem 204
+    $ openssl rsa -in rsa_private_key.pem -pubout -out rsa_public_key.pem
 
 服务端保留私钥并将公钥告诉客户端。
 
@@ -119,9 +129,19 @@ proxy_server_port    | 服务端的端口         | 是               | 无     
 bind_address         | 客户端绑定的IP地址   | 否               | "127.0.0.1"   |
 listen_port          | 客户端的监听端口     | 否               | 8089          |
 rsa_public_key       | RSA公钥              | 是               | 无            |
-cipher               | 加密算法             | 是               | "aes-256-ofb" |
+cipher               | 加密方法             | 是               | "aes-256-ofb" |
 timeout              | 超时时间（秒）       | 否               | 240           |
 workers              | 并发工作线程数       | 否               | 2             |
+
+#### 支持的加密方法
+
+ - aes-xyz-cfb
+ - aes-xyz-cfb8
+ - aes-xyz-cfb1
+ - aes-xyz-ofb
+ - aes-xyz-ctr
+
+中间的xyz可以为128、192或256。
 
 ## 运行
 
@@ -131,21 +151,21 @@ workers              | 并发工作线程数       | 否               | 2      
 
  Linux或其他类Unix系统
  
-    ./ahps
+    $ ./ahps
  
  Windows
  
-    ahps.exe
+    $ ahps.exe
  
 ### 运行客户端
 
 Linux或其他类Unix系统
 
-    ./ahpc
+    $ ./ahpc
  
 Windows
  
-    ahpc.exe
+    $ ahpc.exe
  
  Enjoy!
  
