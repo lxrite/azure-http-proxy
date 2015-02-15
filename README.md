@@ -14,6 +14,8 @@ AHP(Azure Http Proxy)是一款高速、安全、轻量级和跨平台的HTTP代�
 
 ## 编译和安装
 
+Windows平台可以从 https://github.com/lxrite/azure-http-proxy/releases 下载已经编译好的(win32-binary.zip)。
+
 ### 编译器
 
 AHP使用了部分C++11特性，所以要求对编译器的版本有较高要求，下面列出了部分已测试过可以用来编译AHP的编译器
@@ -26,8 +28,6 @@ AHP使用了部分C++11特性，所以要求对编译器的版本有较高要求
 参考：http://en.cppreference.com/w/cpp/compiler_support
 
 ### 安装依赖
-
-Windows如果不想编译可以从 https://github.com/lxrite/azure-http-proxy/releases 下载已经编译好的(win32-binary.zip)。
 
 AHP依赖Boost和OpenSSL库，且要求Boost库版本不低于1.52
 
