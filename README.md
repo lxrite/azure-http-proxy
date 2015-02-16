@@ -71,7 +71,7 @@ Windows下可以使用cmake-gui.exe，Linux或其他类Unix系统可以使用下
 
 如果你要运行的是服务端，那么你首先需要生成一对RSA密钥对，AHP支持任意长度不小于1024位的RSA密钥。下面的命令使用openssl生成2048位的私钥和公钥
 
-    $ openssl genrsa -out rsa_private_key.pem 204
+    $ openssl genrsa -out rsa_private_key.pem 2048
     $ openssl rsa -in rsa_private_key.pem -pubout -out rsa_public_key.pem
 
 服务端保留私钥并将公钥告诉客户端。
