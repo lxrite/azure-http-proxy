@@ -131,7 +131,7 @@ proxy_server_port    | 服务端的端口         | 是               | 无     
 bind_address         | 客户端绑定的IP地址   | 否               | "127.0.0.1"   |
 listen_port          | 客户端的监听端口     | 否               | 8089          |
 rsa_public_key       | RSA公钥              | 是               | 无            |
-cipher               | 加密方法             | 是               | "aes-256-ofb" |
+cipher               | 加密方法             | 否               | "aes-256-ofb" |
 timeout              | 超时时间（秒）       | 否               | 240           |
 workers              | 并发工作线程数       | 否               | 2             |
 
