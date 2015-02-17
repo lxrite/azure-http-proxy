@@ -120,9 +120,11 @@ public:
                         continue;
                     }
                     break;
+                case http_chunk_check_state::chunk_complete:
+                    break;
                 default:
                     assert(false);
-                    return false;
+                    break;
             }
             this->state = http_chunk_check_state::chunk_check_failed;
             return false;
