@@ -147,6 +147,9 @@ http_headers_container http_header_parser::parse_headers(std::string::const_iter
                     header_field_name.push_back(*iter);
                     state = parse_header_state::header_field_name;
                 }
+                else if (iter == begin && *iter == '\r') {
+                    state = parse_header_state::header_field_crlfcr;
+                }
                 else {
                     state = parse_header_state::header_parse_failed;
                 }
