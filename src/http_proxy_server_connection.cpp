@@ -281,7 +281,7 @@ void http_proxy_server_connection::report_error(const std::string& status_code, 
     this->modified_response_data += "\r\n";
     this->modified_response_data += "Proxy-Connection: close\r\n";
     this->modified_response_data += "\r\n";
-    if (this->request_header->method() != "HEAD") {
+    if (!this->request_header || this->request_header->method() != "HEAD") {
         this->modified_response_data += response_content;
     }
     
