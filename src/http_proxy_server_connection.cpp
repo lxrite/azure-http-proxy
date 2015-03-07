@@ -684,7 +684,7 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
             }
         }
         this->connection_context.connection_state = proxy_connection_state::write_http_request_content;
-        this->async_write_data_to_origin_server(this->upgoing_buffer_write.data(), 0, this->upgoing_buffer_write.size());
+        this->async_write_data_to_origin_server(this->upgoing_buffer_write.data(), 0, bytes_transferred);
     }
     else if (this->connection_context.connection_state == proxy_connection_state::tunnel_transfer) {
         this->async_write_data_to_origin_server(this->upgoing_buffer_write.data(), 0, bytes_transferred);
