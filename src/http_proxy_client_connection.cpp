@@ -42,7 +42,7 @@ void http_proxy_client_connection::start()
 {
     std::array<unsigned char, 86> cipher_info_raw;
     cipher_info_raw.fill(0);
-    // 1 ~ 3
+    // 0 ~ 2
     cipher_info_raw[0] = 'A';
     cipher_info_raw[1] = 'H';
     cipher_info_raw[2] = 'P';
