@@ -155,7 +155,7 @@ http_headers_container http_header_parser::parse_headers(std::string::const_iter
                 }
                 break;
             case parse_header_state::header_field_name:
-                if (is_token_char(*iter)) {
+                if (is_token_char(*iter) || *iter == ' ') {
                     header_field_name.push_back(*iter);
                 }
                 else if (*iter == ':') {
@@ -199,6 +199,10 @@ http_headers_container http_header_parser::parse_headers(std::string::const_iter
                     state = parse_header_state::header_field_value;
                 }
                 else {
+                    while (!header_field_name.empty() && (header_field_name[header_field_name.size() - 1] == ' ')) {
+                        header_field_name.resize(header_field_name.size() - 1);
+                    }
+                    assert(!header_field_name.empty());
                     while (!header_field_value.empty() && (header_field_value[header_field_value.size() - 1] == ' ' || (header_field_value[header_field_value.size() - 1] == '\t'))) {
                         header_field_value.resize(header_field_value.size() - 1);
                     }
@@ -330,7 +334,7 @@ boost::optional<http_response_header> http_header_parser::parse_response_header(
     if (*iter != '\r') return nullptr;
 
     if (iter == end || *(++iter) != '\n') return nullptr;
-    
+
     ++iter;
     try {
         header._headers_map = parse_headers(iter, end);
