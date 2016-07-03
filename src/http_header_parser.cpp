@@ -50,7 +50,7 @@ boost::optional<std::string> http_request_header::get_header_value(const std::st
 {
     auto iter = this->_headers_map.find(name);
     if (iter == this->_headers_map.end()) {
-        return nullptr;
+        return boost::none;
     }
     return std::get<1>(*iter);
 }
@@ -88,7 +88,7 @@ boost::optional<std::string> http_response_header::get_header_value(const std::s
 {
     auto iter = this->_headers_map.find(name);
     if (iter == this->_headers_map.end()) {
-        return nullptr;
+        return boost::none;
     }
     return std::get<1>(*iter);
 }
@@ -240,33 +240,33 @@ boost::optional<http_request_header> http_header_parser::parse_request_header(st
     auto tmp = iter;
     for (;iter != end && *iter != ' ' && *iter != '\r'; ++iter)
         ;
-    if (iter == tmp || iter == end || *iter != ' ') return nullptr;
+    if (iter == tmp || iter == end || *iter != ' ') return boost::none;
     http_request_header header;
     header._method = std::string(tmp, iter);
     tmp = ++iter;
     for (;iter != end && *iter != ' ' && *iter != '\r'; ++iter)
         ;
-    if (iter == tmp || iter == end || *iter != ' ') return nullptr;
+    if (iter == tmp || iter == end || *iter != ' ') return boost::none;
     auto request_uri = std::string(tmp, iter);
     if (header.method() == "CONNECT") {
         boost::regex regex("(.+?):(\\d+)");
         boost::match_results<std::string::iterator> match_results;
         if (!boost::regex_match(request_uri.begin(), request_uri.end(), match_results, regex)) {
-            return nullptr;
+            return boost::none;
         }
         header._host = match_results[1];
         try {
             header._port = static_cast<unsigned short>(std::stoul(std::string(match_results[2])));
         }
         catch (const std::exception&) {
-            return nullptr;
+            return boost::none;
         }
     }
     else {
         boost::regex regex("(.+?)://(.+?)(:(\\d+))?(/.*)");
         boost::match_results<std::string::iterator> match_results;
         if (!boost::regex_match(request_uri.begin(), request_uri.end(), match_results, regex)) {
-            return nullptr;
+            return boost::none;
         }
         header._scheme = match_results[1];
         header._host = match_results[2];
@@ -275,7 +275,7 @@ boost::optional<http_request_header> http_header_parser::parse_request_header(st
                 header._port = static_cast<unsigned short>(std::stoul(std::string(match_results[4])));
             }
             catch (const std::exception&) {
-                return nullptr;
+                return boost::none;
             }
         }
         header._path_and_query = match_results[5];
@@ -285,19 +285,19 @@ boost::optional<http_request_header> http_header_parser::parse_request_header(st
     for (;iter != end && *iter != '\r'; ++iter)
         ;
     // HTTP/x.y
-    if (iter == end || std::distance(tmp, iter) < 6 || !std::equal(tmp, tmp + 5, "HTTP/")) return nullptr;
+    if (iter == end || std::distance(tmp, iter) < 6 || !std::equal(tmp, tmp + 5, "HTTP/")) return boost::none;
 
     header._http_version = std::string(tmp + 5, iter);
 
     ++iter;
-    if (iter == end || *iter != '\n') return nullptr;
+    if (iter == end || *iter != '\n') return boost::none;
 
     ++iter;
     try {
         header._headers_map = parse_headers(iter, end);
     }
     catch (const std::exception&) {
-        return nullptr;
+        return boost::none;
     }
 
     return header;
@@ -309,38 +309,38 @@ boost::optional<http_response_header> http_header_parser::parse_response_header(
     auto tmp = iter;
     for (;iter != end && *iter != ' ' && *iter != '\r'; ++iter)
         ;
-    if (std::distance(tmp, iter) < 6 || iter == end || *iter != ' ' || !std::equal(tmp, tmp + 5, "HTTP/")) return nullptr;
+    if (std::distance(tmp, iter) < 6 || iter == end || *iter != ' ' || !std::equal(tmp, tmp + 5, "HTTP/")) return boost::none;
     http_response_header header;
     header._http_version = std::string(tmp + 5, iter);
     tmp = ++iter;
     for (;iter != end && *iter != ' ' && *iter != '\r'; ++iter)
         ;
-    if (tmp == iter || iter == end) return nullptr;
+    if (tmp == iter || iter == end) return boost::none;
     try {
         header._status_code = std::stoul(std::string(tmp, iter));
     }
     catch(const std::exception&) {
-        return nullptr;
+        return boost::none;
     }
 
     if (*iter == ' ') {
         tmp = ++iter;
         for (;iter != end && *iter != '\r'; ++iter)
             ;
-        if (iter == end || *iter != '\r') return nullptr;
+        if (iter == end || *iter != '\r') return boost::none;
         header._status_description = std::string(tmp, iter);
     }
 
-    if (*iter != '\r') return nullptr;
+    if (*iter != '\r') return boost::none;
 
-    if (iter == end || *(++iter) != '\n') return nullptr;
+    if (iter == end || *(++iter) != '\n') return boost::none;
 
     ++iter;
     try {
         header._headers_map = parse_headers(iter, end);
     }
     catch (const std::exception&) {
-        return nullptr;
+        return boost::none;
     }
 
     return header;
