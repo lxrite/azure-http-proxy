@@ -27,6 +27,9 @@ void http_proxy_server::run()
     const auto& config = http_proxy_server_config::get_instance();
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(config.get_bind_address()), config.get_listen_port());
     this->acceptor.open(endpoint.protocol());
+#ifndef _WIN32
+    this->acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+#endif
     this->acceptor.bind(endpoint);
     this->acceptor.listen(boost::asio::socket_base::max_connections);
     this->start_accept();
