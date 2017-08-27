@@ -1,28 +1,33 @@
-language:
-    - cpp
+language: cpp
+dist: trusty
 
-compiler:
-    - clang
-    - gcc
+matrix:
+  include:
+    - compiler: clang
+      addons:
+        apt:
+          sources: 
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty
+          packages:
+            - clang
+            - cmake
+            - libboost-system-dev
+            - libboost-regex-dev
 
-before_install:
-    - sudo add-apt-repository ppa:apokluda/boost1.53 --yes
-    - sudo add-apt-repository ppa:ubuntu-toolchain-r/test --yes
-    - if [ "${CXX}" == "clang++" ]; then sudo add-apt-repository --yes ppa:h-rayflood/llvm; fi
-    - sudo apt-get update
-
-install:
-    - if [ "${CXX}" == "clang++" ]; then sudo apt-get -qq install clang-3.2; fi
-    - sudo apt-get install g++-4.8;
-    - sudo apt-get install libboost-system1.53-dev
-    - sudo apt-get install libboost-regex1.53-dev
-
-before_script:
-    - if [ "${CXX}" == "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
-    - if [ "${CXX}" == "clang++" ]; then export CXX="clang++-3.2" CC="clang-3.2"; fi
+    - compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc
+            - cmake
+            - libboost-system-dev
+            - libboost-regex-dev
 
 script:
-    - mkdir build
-    - cd build
-    - cmake ..
-    - make
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
