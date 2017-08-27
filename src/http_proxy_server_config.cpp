@@ -78,14 +78,14 @@ bool http_proxy_server_config::load_config(const std::string& config_data)
         this->config_map["timeout"] = static_cast<unsigned int>(timeout < 30 ? 30 : timeout);
     }
     else {
-        this->config_map["timeout"] = 240ul;
+        this->config_map["timeout"] = 240u;
     }
     if (json_obj.has<jsonxx::Number>("workers")) {
         int threads = static_cast<int>(json_obj.get<jsonxx::Number>("workers"));
         this->config_map["workers"] = static_cast<unsigned int>(threads < 1 ? 1 : (threads > 16 ? 16 : threads));
     }
     else {
-        this->config_map["workers"] = 4ul;
+        this->config_map["workers"] = 4u;
     }
     if (json_obj.has<jsonxx::Boolean>("auth")) {
         this->config_map["auth"] = json_obj.get<jsonxx::Boolean>("auth");
