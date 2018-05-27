@@ -63,6 +63,9 @@ Windows下可以使用cmake-gui.exe，Linux或其他类Unix系统可以使用下
     $ make
 
 如果编译成功会生成ahpc（客户端）和ahps（服务端）。
+
+OpenWrt/LEDE 编译参考 [openwrt-ahp](https://github.com/lxrite/openwrt-ahp)
+
 ## 配置和运行
 
 完整的配置示例见这里： https://github.com/lxrite/azure-http-proxy/tree/master/example
