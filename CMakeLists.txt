@@ -40,3 +40,5 @@ if(WIN32)
     target_link_libraries(ahps ws2_32 wsock32)
   endif()
 endif()
+
+install(TARGETS ahpc ahps DESTINATION bin)
