@@ -1,7 +1,7 @@
 /*
  *    encrypt.hpp:
  *
- *    Copyright (C) 2014-2015 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2014-2018 limhiaoing <blog.poxiao.me> All Rights Reserved.
  *
  */
 
@@ -15,6 +15,7 @@
 
 extern "C" {
 #include <openssl/aes.h>
+#include <openssl/modes.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 }
@@ -247,7 +248,7 @@ public:
 
     virtual void encrypt(const unsigned char* in, unsigned char* out, std::size_t length) {
         assert(in && out);
-        AES_ctr128_encrypt(in, out, length, &aes_ctx, this->ivec, this->ecount_buf, &this->num);
+        CRYPTO_ctr128_encrypt(in, out, length, &aes_ctx, this->ivec, this->ecount_buf, &this->num, (block128_f)AES_encrypt);
     }
 
     virtual ~aes_ctr128_encryptor() {
@@ -272,7 +273,7 @@ public:
 
     virtual void decrypt(const unsigned char* in, unsigned char* out, std::size_t length) {
         assert(in && out);
-        AES_ctr128_encrypt(in, out, length, &aes_ctx, this->ivec, this->ecount_buf, &this->num);
+        CRYPTO_ctr128_encrypt(in, out, length, &aes_ctx, this->ivec, this->ecount_buf, &this->num, (block128_f)AES_encrypt);
     }
 
     virtual ~aes_ctr128_decryptor() {
