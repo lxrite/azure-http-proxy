@@ -3,28 +3,35 @@ dist: trusty
 
 matrix:
   include:
-    - compiler: clang
+    - os: linux
       addons:
         apt:
           sources: 
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty
+            - llvm-toolchain-trusty-5.0
           packages:
-            - clang
+            - clang-5.0
             - cmake
             - libboost-system-dev
             - libboost-regex-dev
+      env:
+        - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
 
-    - compiler: gcc
+    - os: linux
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - gcc
+            - g++-7
             - cmake
             - libboost-system-dev
             - libboost-regex-dev
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+
+before_install:
+  - eval "${MATRIX_EVAL}"
 
 script:
   - mkdir build
