@@ -1,24 +1,23 @@
 /*
  *    http_proxy_client_config.hpp:
  *
- *    Copyright (C) 2013-2015 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2013-2018 limhiaoing <blog.poxiao.me> All Rights Reserved.
  *
  */
 
 #ifndef AZURE_HTTP_PROXY_CLIENT_CONFIG_HPP
 #define AZURE_HTTP_PROXY_CLIENT_CONFIG_HPP
 
+#include <any>
 #include <cassert>
 #include <map>
 #include <stdexcept>
 #include <string>
 
-#include <boost/any.hpp>
-
 namespace azure_proxy {
 
 class http_proxy_client_config {
-    std::map<std::string, boost::any> config_map;
+    std::map<std::string, std::any> config_map;
 private:
     template<typename T>
     T get_config_value(const std::string& key) const {
@@ -27,7 +26,7 @@ private:
         if (iter == this->config_map.end()) {
             throw std::invalid_argument("invalid argument");
         }
-        return boost::any_cast<T>(iter->second);
+        return std::any_cast<T>(iter->second);
     }
     http_proxy_client_config();
     bool load_config(const std::string& config_data);
