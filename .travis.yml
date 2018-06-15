@@ -13,7 +13,6 @@ matrix:
             - clang-5.0
             - cmake
             - libboost-system-dev
-            - libboost-regex-dev
       env:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
 
@@ -26,7 +25,6 @@ matrix:
             - g++-7
             - cmake
             - libboost-system-dev
-            - libboost-regex-dev
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
