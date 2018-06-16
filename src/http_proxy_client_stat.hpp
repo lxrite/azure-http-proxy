@@ -1,7 +1,7 @@
 ﻿/*
  *    http_proxy_client_stat.hpp:
  *
- *    Copyright (C) 2013-2015 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2013-2018 limhiaoing <blog.poxiao.me> All Rights Reserved.
  *
  */
 
@@ -12,8 +12,9 @@
 #include <chrono>
 #include <cstdint>
 #include <deque>
+#include <experimental/net>
 
-#include <boost/asio.hpp>
+namespace net = std::experimental::net;
 
 namespace azure_proxy {
 
@@ -46,10 +47,10 @@ private:
 
     std::atomic<std::uint32_t> current_connections;
 public:
-    void start_stat(boost::asio::io_service& io_service);
+    void start_stat(net::io_context& io_ctx);
 private:
     http_proxy_client_stat();
-    void callback(const boost::system::error_code& error, std::shared_ptr<boost::asio::basic_waitable_timer<std::chrono::steady_clock>> sp_timer);
+    void callback(const std::error_code& error, std::shared_ptr<net::basic_waitable_timer<std::chrono::steady_clock>> sp_timer);
 public:
     std::uint32_t increase_current_connections();
     std::uint32_t decrease_current_connections();

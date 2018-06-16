@@ -1,17 +1,18 @@
 ﻿/*
  *    http_proxy_client_main.cpp:
  *
- *    Copyright (C) 2013-2015 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2013-2018 limhiaoing <blog.poxiao.me> All Rights Reserved.
  *
  */
 
+#include <experimental/net>
 #include <iostream>
-
-#include <boost/asio.hpp>
 
 #include "http_proxy_client.hpp"
 #include "http_proxy_client_stat.hpp"
 #include "http_proxy_client_config.hpp"
+
+namespace net = std::experimental::net;
 
 int main()
 {
@@ -23,9 +24,9 @@ int main()
             std::cout << "server address: " << config.get_proxy_server_address() << ':' << config.get_proxy_server_port() << std::endl;
             std::cout << "local address: " << config.get_bind_address() << ':' << config.get_listen_port() << std::endl;
             std::cout << "cipher: " << config.get_cipher() << std::endl;
-            boost::asio::io_service io_service;
-            http_proxy_client_stat::get_instance().start_stat(io_service);
-            http_proxy_client client(io_service);
+            net::io_context io_ctx;
+            http_proxy_client_stat::get_instance().start_stat(io_ctx);
+            http_proxy_client client(io_ctx);
             client.run();
         }
     }

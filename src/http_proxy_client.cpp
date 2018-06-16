@@ -1,7 +1,7 @@
 ﻿/*
  *    http_proxy_client.cpp:
  *
- *    Copyright (C) 2013-2015 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2013-2018 limhiaoing <blog.poxiao.me> All Rights Reserved.
  *
  */
 
@@ -17,29 +17,29 @@
 
 namespace azure_proxy {
 
-http_proxy_client::http_proxy_client(boost::asio::io_service& io_service) :
-    io_service(io_service),
-    acceptor(io_service)
+http_proxy_client::http_proxy_client(net::io_context& io_ctx) :
+    io_ctx(io_ctx),
+    acceptor(io_ctx)
 {
 }
 
 void http_proxy_client::run()
 {
     const auto& config = http_proxy_client_config::get_instance();
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(config.get_bind_address()), config.get_listen_port());
+    net::ip::tcp::endpoint endpoint(net::ip::make_address(config.get_bind_address()), config.get_listen_port());
     this->acceptor.open(endpoint.protocol());
 #ifndef _WIN32
-    this->acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+    this->acceptor.set_option(net::ip::tcp::acceptor::reuse_address(true));
 #endif
     this->acceptor.bind(endpoint);
-    this->acceptor.listen(boost::asio::socket_base::max_connections);
+    this->acceptor.listen(net::socket_base::max_listen_connections);
     this->start_accept();
 
     std::vector<std::thread> td_vec;
     for (auto i = 0u; i < config.get_workers(); ++i) {
         td_vec.emplace_back([this]() {
             try {
-                this->io_service.run();
+                this->io_ctx.run();
             }
             catch (const std::exception& e) {
                 std::cerr << e.what() << std::endl;
@@ -54,11 +54,10 @@ void http_proxy_client::run()
 
 void http_proxy_client::start_accept()
 {
-    auto socket = std::make_shared<boost::asio::ip::tcp::socket>(this->acceptor.get_io_service());
-    this->acceptor.async_accept(*socket, [socket, this](const boost::system::error_code& error) {
+    this->acceptor.async_accept([this](const std::error_code& error, net::ip::tcp::socket socket) {
         if (!error) {
             this->start_accept();
-            auto connection = http_proxy_client_connection::create(std::move(*socket));
+            auto connection = http_proxy_client_connection::create(this->io_ctx, std::move(socket));
             connection->start();
         }
     });

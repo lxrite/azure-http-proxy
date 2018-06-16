@@ -9,11 +9,12 @@
 #define AZURE_HTTP_PROXY_SERVER_CONNECTION_CONTEXT_HPP
 
 #include <cstdint>
+#include <experimental/net>
 #include <optional>
 
-#include <boost/asio.hpp>
-
 #include "http_chunk_checker.hpp"
+
+namespace net = std::experimental::net;
 
 namespace azure_proxy {
 
@@ -39,7 +40,7 @@ struct http_proxy_server_connection_context {
     bool reconnect_on_error;
     std::string origin_server_name;
     unsigned short origin_server_port;
-    std::optional<boost::asio::ip::tcp::endpoint> origin_server_endpoint;
+    std::optional<net::ip::tcp::endpoint> origin_server_endpoint;
 };
 
 struct http_proxy_server_connection_read_request_context {

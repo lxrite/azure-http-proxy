@@ -1,22 +1,24 @@
 ﻿/*
  *    http_proxy_server.hpp:
  *
- *    Copyright (C) 2013-2015 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2013-2018 limhiaoing <blog.poxiao.me> All Rights Reserved.
  *
  */
 
 #ifndef AZURE_HTTP_PROXY_SERVER_HPP
 #define AZURE_HTTP_PROXY_SERVER_HPP
 
-#include <boost/asio.hpp>
+#include <experimental/net>
+
+namespace net = std::experimental::net;
 
 namespace azure_proxy {
 
     class http_proxy_server {
-        boost::asio::io_service& io_service;
-        boost::asio::ip::tcp::acceptor acceptor;
+        net::io_context& io_ctx;
+        net::ip::tcp::acceptor acceptor;
     public:
-        http_proxy_server(boost::asio::io_service& io_service);
+        http_proxy_server(net::io_context& io_ctx);
         void run();
     private:
         void start_accept();

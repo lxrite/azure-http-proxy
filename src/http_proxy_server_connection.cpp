@@ -19,12 +19,12 @@ static const std::size_t MAX_RESPONSE_HEADER_LENGTH = 10240;
 
 namespace azure_proxy {
 
-http_proxy_server_connection::http_proxy_server_connection(boost::asio::ip::tcp::socket&& proxy_client_socket) :
-    strand(proxy_client_socket.get_io_service()),
+http_proxy_server_connection::http_proxy_server_connection(net::io_context& io_ctx, net::ip::tcp::socket&& proxy_client_socket) :
+    strand(io_ctx.get_executor()),
     proxy_client_socket(std::move(proxy_client_socket)),
-    origin_server_socket(this->proxy_client_socket.get_io_service()),
-    resolver(this->proxy_client_socket.get_io_service()),
-    timer(this->proxy_client_socket.get_io_service()),
+    origin_server_socket(io_ctx),
+    resolver(io_ctx),
+    timer(io_ctx),
     rsa_pri(http_proxy_server_config::get_instance().get_rsa_private_key())
 {
     this->connection_context.connection_state = proxy_connection_state::read_cipher_data;
@@ -34,9 +34,9 @@ http_proxy_server_connection::~http_proxy_server_connection()
 {
 }
 
-std::shared_ptr<http_proxy_server_connection> http_proxy_server_connection::create(boost::asio::ip::tcp::socket&& client_socket)
+std::shared_ptr<http_proxy_server_connection> http_proxy_server_connection::create(net::io_context& io_ctx, net::ip::tcp::socket&& client_socket)
 {
-    return std::shared_ptr<http_proxy_server_connection>(new http_proxy_server_connection(std::move(client_socket)));
+    return std::shared_ptr<http_proxy_server_connection>(new http_proxy_server_connection(io_ctx, std::move(client_socket)));
 }
 
 void http_proxy_server_connection::start()
@@ -50,10 +50,10 @@ void http_proxy_server_connection::async_read_data_from_proxy_client(std::size_t
     assert(at_least_size <= at_most_size && at_most_size <= BUFFER_LENGTH);
     auto self(this->shared_from_this());
     this->set_timer();
-    boost::asio::async_read(this->proxy_client_socket,
-        boost::asio::buffer(&this->upgoing_buffer_read[0], at_most_size),
-        boost::asio::transfer_at_least(at_least_size),
-        this->strand.wrap([this, self](const boost::system::error_code& error, std::size_t bytes_transferred) {
+    net::async_read(this->proxy_client_socket,
+        net::buffer(&this->upgoing_buffer_read[0], at_most_size),
+        net::transfer_at_least(at_least_size),
+        net::bind_executor(this->strand, [this, self](const std::error_code& error, std::size_t bytes_transferred) {
             if (this->cancel_timer()) {
                 if (!error) {
                     this->on_proxy_client_data_arrived(bytes_transferred);
@@ -72,10 +72,10 @@ void http_proxy_server_connection::async_read_data_from_origin_server(bool set_t
     if (set_timer) {
         this->set_timer();
     }
-    boost::asio::async_read(this->origin_server_socket,
-        boost::asio::buffer(&this->downgoing_buffer_read[0], at_most_size),
-        boost::asio::transfer_at_least(at_least_size),
-        this->strand.wrap([this, self](const boost::system::error_code& error, std::size_t bytes_transferred) {
+    net::async_read(this->origin_server_socket,
+        net::buffer(&this->downgoing_buffer_read[0], at_most_size),
+        net::transfer_at_least(at_least_size),
+        net::bind_executor(this->strand, [this, self](const std::error_code& error, std::size_t bytes_transferred) {
             if (this->cancel_timer()) {
                 if (!error) {
                     this->on_origin_server_data_arrived(bytes_transferred);
@@ -93,8 +93,8 @@ void http_proxy_server_connection::async_connect_to_origin_server()
     this->connection_context.reconnect_on_error = false;
     if (this->origin_server_socket.is_open()) {
         if (this->request_header->method() == "CONNECT") {
-            boost::system::error_code ec;
-            this->origin_server_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+            std::error_code ec;
+            this->origin_server_socket.shutdown(net::ip::tcp::socket::shutdown_both, ec);
             this->origin_server_socket.close(ec);
         }
     }
@@ -108,15 +108,15 @@ void http_proxy_server_connection::async_connect_to_origin_server()
     else {
         this->connection_context.origin_server_name = this->request_header->host();
         this->connection_context.origin_server_port = this->request_header->port();
-        boost::asio::ip::tcp::resolver::query query(this->request_header->host(), std::to_string(this->request_header->port()));
         auto self(this->shared_from_this());
         this->connection_context.connection_state = proxy_connection_state::resolve_origin_server_address;
         this->set_timer();
-        this->resolver.async_resolve(query,
-            this->strand.wrap([this, self](const boost::system::error_code& error, boost::asio::ip::tcp::resolver::iterator iterator) {
+        this->resolver.async_resolve(this->connection_context.origin_server_name, std::to_string(this->connection_context.origin_server_port),
+            net::bind_executor(this->strand, [this, self](const std::error_code& error, net::ip::tcp::resolver::results_type results) {
                 if (this->cancel_timer()) {
                     if (!error) {
-                        this->on_resolved(iterator);
+                        this->resolve_results = results;
+                        this->on_resolved(results.cbegin());
                     }
                     else {
                         this->on_error(error);
@@ -195,8 +195,8 @@ void http_proxy_server_connection::async_write_data_to_origin_server(const char*
 {
     auto self(this->shared_from_this());
     this->set_timer();
-    this->origin_server_socket.async_write_some(boost::asio::buffer(write_buffer + offset, size),
-        this->strand.wrap([this, self, write_buffer, offset, size](const boost::system::error_code& error, std::size_t bytes_transferred) {
+    this->origin_server_socket.async_write_some(net::buffer(write_buffer + offset, size),
+        net::bind_executor(this->strand, [this, self, write_buffer, offset, size](const std::error_code& error, std::size_t bytes_transferred) {
             if (this->cancel_timer()) {
                 if (!error) { 
                     this->connection_context.reconnect_on_error = false;
@@ -219,8 +219,8 @@ void http_proxy_server_connection::async_write_data_to_proxy_client(const char* 
 {
     auto self(this->shared_from_this());
     this->set_timer();
-    this->proxy_client_socket.async_write_some(boost::asio::buffer(write_buffer + offset, size),
-        this->strand.wrap([this, self, write_buffer, offset, size](const boost::system::error_code& error, std::size_t bytes_transferred) {
+    this->proxy_client_socket.async_write_some(net::buffer(write_buffer + offset, size),
+        net::bind_executor(this->strand, [this, self, write_buffer, offset, size](const std::error_code& error, std::size_t bytes_transferred) {
             if (this->cancel_timer()) {
                 if (!error) {
                     if (bytes_transferred < size) {
@@ -327,12 +327,12 @@ void http_proxy_server_connection::report_authentication_failed()
 
 void http_proxy_server_connection::set_timer()
 {
-    if (this->timer.expires_from_now(std::chrono::seconds(http_proxy_server_config::get_instance().get_timeout())) != 0) {
+    if (this->timer.expires_after(std::chrono::seconds(http_proxy_server_config::get_instance().get_timeout())) != 0) {
         assert(false);
     }
     auto self(this->shared_from_this());
-    this->timer.async_wait(this->strand.wrap([this, self](const boost::system::error_code& error) {
-        if (error != boost::asio::error::operation_aborted) {
+    this->timer.async_wait(net::bind_executor(this->strand, [this, self](const std::error_code& error) {
+        if (error != net::error::operation_aborted) {
             this->on_timeout();
         }
     }));
@@ -345,17 +345,17 @@ bool http_proxy_server_connection::cancel_timer()
     return ret == 1;
 }
 
-void http_proxy_server_connection::on_resolved(boost::asio::ip::tcp::resolver::iterator endpoint_iterator)
+void http_proxy_server_connection::on_resolved(net::ip::tcp::resolver::results_type::const_iterator endpoint_iterator)
 {
     if (this->origin_server_socket.is_open()) {
-        for (auto iter = endpoint_iterator; iter != boost::asio::ip::tcp::resolver::iterator(); ++iter) {
+        for (auto iter = endpoint_iterator; iter != this->resolve_results.cend(); ++iter) {
             if (this->connection_context.origin_server_endpoint == iter->endpoint()) {
                 this->connection_context.reconnect_on_error = true;
                 this->on_connect();
                 return;
             }
-            boost::system::error_code ec;
-            this->origin_server_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+            std::error_code ec;
+            this->origin_server_socket.shutdown(net::ip::tcp::socket::shutdown_both, ec);
             this->origin_server_socket.close(ec);
         }
     }
@@ -364,15 +364,15 @@ void http_proxy_server_connection::on_resolved(boost::asio::ip::tcp::resolver::i
     this->connection_context.connection_state = proxy_connection_state::connect_to_origin_server;
     this->set_timer();
     this->origin_server_socket.async_connect(endpoint_iterator->endpoint(),
-        this->strand.wrap([this, self, endpoint_iterator](const boost::system::error_code& error) mutable {
+        net::bind_executor(this->strand, [this, self, endpoint_iterator](const std::error_code& error) mutable {
             if (this->cancel_timer()) {
                 if (!error) {
                     this->on_connect();
                 }
                 else {
-                    boost::system::error_code ec;
+                    std::error_code ec;
                     this->origin_server_socket.close(ec);
-                    if (++endpoint_iterator != boost::asio::ip::tcp::resolver::iterator()) {
+                    if (++endpoint_iterator != this->resolve_results.cend()) {
                         this->on_resolved(endpoint_iterator);
                     }
                     else {
@@ -821,9 +821,9 @@ void http_proxy_server_connection::on_proxy_client_data_written()
         || this->connection_context.connection_state == proxy_connection_state::write_http_response_content) {
         if ((this->read_response_context.content_length && this->read_response_context.content_length_has_read >= *this->read_response_context.content_length)
             || (this->read_response_context.chunk_checker && this->read_response_context.chunk_checker->is_complete())) {
-            boost::system::error_code ec;
+            std::error_code ec;
             if (!this->read_response_context.is_origin_server_keep_alive) {
-                this->origin_server_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+                this->origin_server_socket.shutdown(net::ip::tcp::socket::shutdown_both, ec);
                 this->origin_server_socket.close(ec);
             }
             if (this->read_request_context.is_proxy_client_keep_alive) {
@@ -839,7 +839,7 @@ void http_proxy_server_connection::on_proxy_client_data_written()
                 this->async_read_data_from_proxy_client();
             }
             else {
-                this->proxy_client_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+                this->proxy_client_socket.shutdown(net::ip::tcp::socket::shutdown_both, ec);
                 this->proxy_client_socket.close(ec);
             }
         }
@@ -852,13 +852,13 @@ void http_proxy_server_connection::on_proxy_client_data_written()
         this->start_tunnel_transfer();
     }
     else if (this->connection_context.connection_state == proxy_connection_state::report_error) {
-        boost::system::error_code ec;
+        std::error_code ec;
         if (this->origin_server_socket.is_open()) {
-            this->origin_server_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+            this->origin_server_socket.shutdown(net::ip::tcp::socket::shutdown_both, ec);
             this->origin_server_socket.close(ec);
         }
         if (this->proxy_client_socket.is_open()) {
-            this->proxy_client_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+            this->proxy_client_socket.shutdown(net::ip::tcp::socket::shutdown_both, ec);
             this->proxy_client_socket.close(ec);
         }
     }
@@ -895,7 +895,7 @@ void http_proxy_server_connection::on_origin_server_data_written()
     }
 }
 
-void http_proxy_server_connection::on_error(const boost::system::error_code& error)
+void http_proxy_server_connection::on_error(const std::error_code& error)
 {
     if (this->connection_context.connection_state == proxy_connection_state::resolve_origin_server_address) {
         this->report_error("504", "Gateway Timeout", "Failed to resolve the hostname");
@@ -904,19 +904,19 @@ void http_proxy_server_connection::on_error(const boost::system::error_code& err
         this->report_error("502", "Bad Gateway", "Failed to connect to origin server");
     }
     else if (this->connection_context.connection_state == proxy_connection_state::write_http_request_header && this->connection_context.reconnect_on_error) {
-        boost::system::error_code ec;
-        this->origin_server_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        std::error_code ec;
+        this->origin_server_socket.shutdown(net::ip::tcp::socket::shutdown_both, ec);
         this->origin_server_socket.close(ec);
         this->async_connect_to_origin_server();
     }
     else {
-        boost::system::error_code ec;
+        std::error_code ec;
         if (this->origin_server_socket.is_open()) {
-            this->origin_server_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+            this->origin_server_socket.shutdown(net::ip::tcp::socket::shutdown_both, ec);
             this->origin_server_socket.close(ec);
         }
         if (this->proxy_client_socket.is_open()) {
-            this->proxy_client_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+            this->proxy_client_socket.shutdown(net::ip::tcp::socket::shutdown_both, ec);
             this->proxy_client_socket.close(ec);
         }
     }
@@ -924,13 +924,13 @@ void http_proxy_server_connection::on_error(const boost::system::error_code& err
 
 void http_proxy_server_connection::on_timeout()
 {
-    boost::system::error_code ec;
+    std::error_code ec;
     if (this->origin_server_socket.is_open()) {
-        this->origin_server_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        this->origin_server_socket.shutdown(net::ip::tcp::socket::shutdown_both, ec);
         this->origin_server_socket.close(ec);
     }
     if (this->proxy_client_socket.is_open()) {
-        this->proxy_client_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        this->proxy_client_socket.shutdown(net::ip::tcp::socket::shutdown_both, ec);
         this->proxy_client_socket.close(ec);
     }
 }

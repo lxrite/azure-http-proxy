@@ -1,14 +1,17 @@
 ﻿/*
  *    http_proxy_server_main.cpp:
  *
- *    Copyright (C) 2013-2015 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2013-2018 limhiaoing <blog.poxiao.me> All Rights Reserved.
  *
  */
 
+#include <experimental/net>
 #include <iostream>
 
 #include "http_proxy_server_config.hpp"
 #include "http_proxy_server.hpp"
+
+namespace net = std::experimental::net;
 
 int main()
 {
@@ -18,8 +21,8 @@ int main()
         if (config.load_config()) {
             std::cout << "Azure Http Proxy Server" << std::endl;
             std::cout << "bind address: " << config.get_bind_address() << ':' << config.get_listen_port() << std::endl;
-            boost::asio::io_service io_service;
-            http_proxy_server server(io_service);
+            net::io_context io_ctx;
+            http_proxy_server server(io_ctx);
             server.run();
         }
     }
