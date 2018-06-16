@@ -1,7 +1,7 @@
 /*
  *    http_proxy_server_connection_context.hpp:
  *
- *    Copyright (C) 2013-2015 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2013-2018 limhiaoing <blog.poxiao.me> All Rights Reserved.
  *
  */
 
@@ -9,9 +9,9 @@
 #define AZURE_HTTP_PROXY_SERVER_CONNECTION_CONTEXT_HPP
 
 #include <cstdint>
+#include <optional>
 
 #include <boost/asio.hpp>
-#include <boost/optional.hpp>
 
 #include "http_chunk_checker.hpp"
 
@@ -39,21 +39,21 @@ struct http_proxy_server_connection_context {
     bool reconnect_on_error;
     std::string origin_server_name;
     unsigned short origin_server_port;
-    boost::optional<boost::asio::ip::tcp::endpoint> origin_server_endpoint;
+    std::optional<boost::asio::ip::tcp::endpoint> origin_server_endpoint;
 };
 
 struct http_proxy_server_connection_read_request_context {
     bool is_proxy_client_keep_alive;
-    boost::optional<std::uint64_t> content_length;
+    std::optional<std::uint64_t> content_length;
     std::uint64_t content_length_has_read;
-    boost::optional<http_chunk_checker> chunk_checker;
+    std::optional<http_chunk_checker> chunk_checker;
 };
 
 struct http_proxy_server_connection_read_response_context {
     bool is_origin_server_keep_alive;
-    boost::optional<std::uint64_t> content_length;
+    std::optional<std::uint64_t> content_length;
     std::uint64_t content_length_has_read;
-    boost::optional<http_chunk_checker> chunk_checker;
+    std::optional<http_chunk_checker> chunk_checker;
 };
 
 } // namespace azure_proxy

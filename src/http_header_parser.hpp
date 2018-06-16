@@ -1,7 +1,7 @@
 /*
  *    http_header_parser.hpp:
  *
- *    Copyright (C) 2013-2015 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2013-2018 limhiaoing <blog.poxiao.me> All Rights Reserved.
  *
  */
 
@@ -11,9 +11,8 @@
 #include <algorithm>
 #include <cctype>
 #include <map>
+#include <optional>
 #include <string>
-
-#include <boost/optional.hpp>
 
 namespace azure_proxy {
 
@@ -43,7 +42,7 @@ public:
     unsigned short port() const;
     const std::string& path_and_query() const;
     const std::string& http_version() const;
-    boost::optional<std::string> get_header_value(const std::string& name) const;
+    std::optional<std::string> get_header_value(const std::string& name) const;
     std::size_t erase_header(const std::string& name);
     const http_headers_container& get_headers_map() const;
 };
@@ -59,7 +58,7 @@ public:
     const std::string& http_version() const;
     unsigned int status_code() const;
     const std::string& status_description() const;
-    boost::optional<std::string> get_header_value(const std::string& name) const;
+    std::optional<std::string> get_header_value(const std::string& name) const;
     std::size_t erase_header(const std::string& name);
     const http_headers_container& get_headers_map() const;
 };
@@ -67,8 +66,8 @@ public:
 class http_header_parser {
     static http_headers_container parse_headers(std::string::const_iterator begin, std::string::const_iterator end);
 public:
-    static boost::optional<http_request_header> parse_request_header(std::string::const_iterator begin, std::string::const_iterator end);
-    static boost::optional<http_response_header> parse_response_header(std::string::const_iterator begin, std::string::const_iterator end);
+    static std::optional<http_request_header> parse_request_header(std::string::const_iterator begin, std::string::const_iterator end);
+    static std::optional<http_response_header> parse_response_header(std::string::const_iterator begin, std::string::const_iterator end);
 };
 
 }; // namespace azure_proxy

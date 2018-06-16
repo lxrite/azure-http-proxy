@@ -1,7 +1,7 @@
 /*
  *    http_proxy_server_connection.cpp:
  *
- *    Copyright (C) 2013-2015 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2013-2018 limhiaoing <blog.poxiao.me> All Rights Reserved.
  *
  */
 
@@ -627,19 +627,19 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
                 }
             }
 
-            this->read_request_context.content_length = boost::optional<std::uint64_t>();
+            this->read_request_context.content_length = std::optional<std::uint64_t>();
             this->read_request_context.content_length_has_read = 0;
-            this->read_request_context.chunk_checker = boost::optional<http_chunk_checker>();
+            this->read_request_context.chunk_checker = std::optional<http_chunk_checker>();
 
             if (this->request_header->method() == "GET" || this->request_header->method() == "HEAD" || this->request_header->method() == "DELETE") {
-                this->read_request_context.content_length = boost::optional<std::uint64_t>(0);
+                this->read_request_context.content_length = std::optional<std::uint64_t>(0);
             }
             else if (this->request_header->method() == "POST" || this->request_header->method() == "PUT") {
                 auto content_length_value = this->request_header->get_header_value("Content-Length");
                 auto transfer_encoding_value = this->request_header->get_header_value("Transfer-Encoding");
                 if (content_length_value) {
                     try {
-                        this->read_request_context.content_length = boost::optional<std::uint64_t>(std::stoull(*content_length_value));
+                        this->read_request_context.content_length = std::optional<std::uint64_t>(std::stoull(*content_length_value));
                     }
                     catch (const std::exception&) {
                         this->report_error("400", "Bad Request", "Invalid Content-Length in request");
@@ -719,10 +719,10 @@ void http_proxy_server_connection::on_origin_server_data_arrived(std::size_t byt
             this->report_error("502", "Bad Gateway", "Unexpected status code");
             return;
         }
-        this->read_response_context.content_length = boost::optional<std::uint64_t>();
+        this->read_response_context.content_length = std::optional<std::uint64_t>();
         this->read_response_context.content_length_has_read = 0;
         this->read_response_context.is_origin_server_keep_alive = false;
-        this->read_response_context.chunk_checker = boost::optional<http_chunk_checker>();
+        this->read_response_context.chunk_checker = std::optional<http_chunk_checker>();
 
         auto connection_value = this->response_header->get_header_value("Connection");
         
@@ -752,19 +752,19 @@ void http_proxy_server_connection::on_origin_server_data_arrived(std::size_t byt
         }
 
         if (this->request_header->method() == "HEAD") {
-            this->read_response_context.content_length = boost::optional<std::uint64_t>(0);
+            this->read_response_context.content_length = std::optional<std::uint64_t>(0);
         }
         else if (this->response_header->status_code() == 204 || this->response_header->status_code() == 304) {
             // 204 No Content
             // 304 Not Modified
-            this->read_response_context.content_length = boost::optional<std::uint64_t>(0);
+            this->read_response_context.content_length = std::optional<std::uint64_t>(0);
         }
         else {
             auto content_length_value = this->response_header->get_header_value("Content-Length");
             auto transfer_encoding_value = this->response_header->get_header_value("Transfer-Encoding");
             if (content_length_value) {
                 try {
-                    this->read_response_context.content_length = boost::optional<std::uint64_t>(std::stoull(*content_length_value));
+                    this->read_response_context.content_length = std::optional<std::uint64_t>(std::stoull(*content_length_value));
                 }
                 catch(const std::exception&) {
                     this->report_error("502", "Bad Gateway", "Invalid Content-Length in response");
@@ -775,7 +775,7 @@ void http_proxy_server_connection::on_origin_server_data_arrived(std::size_t byt
             else if (transfer_encoding_value) {
                 string_to_lower_case(*transfer_encoding_value);
                 if (*transfer_encoding_value == "chunked") {
-                    this->read_response_context.chunk_checker = boost::optional<http_chunk_checker>(http_chunk_checker());
+                    this->read_response_context.chunk_checker = std::optional<http_chunk_checker>(http_chunk_checker());
                     if (!this->read_response_context.chunk_checker->check(this->response_data.begin() + double_crlf_pos + 4, this->response_data.end())) {
                         this->report_error("502", "Bad Gateway", "Failed to check chunked response");
                         return;
@@ -829,12 +829,12 @@ void http_proxy_server_connection::on_proxy_client_data_written()
             if (this->read_request_context.is_proxy_client_keep_alive) {
                 this->request_data.clear();
                 this->response_data.clear();
-                this->request_header = boost::optional<http_request_header>();
-                this->response_header = boost::optional<http_response_header>();
-                this->read_request_context.content_length = boost::optional<std::uint64_t>();
-                this->read_request_context.chunk_checker = boost::optional<http_chunk_checker>();
-                this->read_response_context.content_length = boost::optional<std::uint64_t>();
-                this->read_response_context.chunk_checker = boost::optional<http_chunk_checker>();
+                this->request_header = std::optional<http_request_header>();
+                this->response_header = std::optional<http_response_header>();
+                this->read_request_context.content_length = std::optional<std::uint64_t>();
+                this->read_request_context.chunk_checker = std::optional<http_chunk_checker>();
+                this->read_response_context.content_length = std::optional<std::uint64_t>();
+                this->read_response_context.chunk_checker = std::optional<http_chunk_checker>();
                 this->connection_context.connection_state = proxy_connection_state::read_http_request_header;
                 this->async_read_data_from_proxy_client();
             }
