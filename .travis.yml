@@ -6,19 +6,6 @@ matrix:
     - os: linux
       addons:
         apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-5.0
-          packages:
-            - clang-5.0
-            - cmake
-            - libboost-system-dev
-      env:
-        - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
-
-    - os: linux
-      addons:
-        apt:
           sources:
             - ubuntu-toolchain-r-test
           packages:
