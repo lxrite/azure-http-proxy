@@ -9,7 +9,6 @@
 #include <iostream>
 
 #include "http_proxy_client.hpp"
-#include "http_proxy_client_stat.hpp"
 #include "http_proxy_client_config.hpp"
 
 namespace net = std::experimental::net;
@@ -25,7 +24,6 @@ int main()
             std::cout << "local address: " << config.get_bind_address() << ':' << config.get_listen_port() << std::endl;
             std::cout << "cipher: " << config.get_cipher() << std::endl;
             net::io_context io_ctx;
-            http_proxy_client_stat::get_instance().start_stat(io_ctx);
             http_proxy_client client(io_ctx);
             client.run();
         }

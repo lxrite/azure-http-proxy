@@ -11,7 +11,6 @@
 
 #include "http_proxy_client_config.hpp"
 #include "http_proxy_client_connection.hpp"
-#include "http_proxy_client_stat.hpp"
 #include "key_generator.hpp"
 
 namespace azure_proxy {
@@ -25,12 +24,10 @@ http_proxy_client_connection::http_proxy_client_connection(net::io_context& io_c
     timer(io_ctx),
     timeout(std::chrono::seconds(http_proxy_client_config::get_instance().get_timeout()))
 {
-    http_proxy_client_stat::get_instance().increase_current_connections();
 }
 
 http_proxy_client_connection::~http_proxy_client_connection()
 {
-    http_proxy_client_stat::get_instance().decrease_current_connections();
 }
 
 std::shared_ptr<http_proxy_client_connection> http_proxy_client_connection::create(net::io_context& io_ctx, net::ip::tcp::socket&& ua_socket)
@@ -229,7 +226,6 @@ void http_proxy_client_connection::async_read_data_from_user_agent()
     this->user_agent_socket.async_read_some(net::buffer(this->upgoing_buffer_read.data(), this->upgoing_buffer_read.size()), net::bind_executor(this->strand, [this, self](const std::error_code& error, std::size_t bytes_transferred) {
         if (this->cancel_timer()) {
             if (!error) {
-                http_proxy_client_stat::get_instance().on_upgoing_recv(static_cast<std::uint32_t>(bytes_transferred));
                 this->encryptor->encrypt(reinterpret_cast<const unsigned char*>(&this->upgoing_buffer_read[0]), reinterpret_cast<unsigned char*>(&this->upgoing_buffer_write[0]), bytes_transferred);
                 this->async_write_data_to_proxy_server(this->upgoing_buffer_write.data(), 0, bytes_transferred);
             }
@@ -249,7 +245,6 @@ void http_proxy_client_connection::async_read_data_from_proxy_server(bool set_ti
     this->proxy_server_socket.async_read_some(net::buffer(this->downgoing_buffer_read.data(), this->downgoing_buffer_read.size()), net::bind_executor(this->strand, [this, self](const std::error_code& error, std::size_t bytes_transferred) {
         if (this->cancel_timer()) {
             if (!error) {
-                http_proxy_client_stat::get_instance().on_downgoing_recv(static_cast<std::uint32_t>(bytes_transferred));
                 this->decryptor->decrypt(reinterpret_cast<const unsigned char*>(&this->downgoing_buffer_read[0]), reinterpret_cast<unsigned char*>(&this->downgoing_buffer_write[0]), bytes_transferred);
                 this->async_write_data_to_user_agent(this->downgoing_buffer_write.data(), 0, bytes_transferred);
             }
@@ -268,7 +263,6 @@ void http_proxy_client_connection::async_write_data_to_user_agent(const char* wr
         net::bind_executor(this->strand, [this, self, write_buffer, offset, size](const std::error_code& error, std::size_t bytes_transferred) {
         if (this->cancel_timer()) {
             if (!error) {
-                http_proxy_client_stat::get_instance().on_downgoing_send(static_cast<std::uint32_t>(bytes_transferred));
                 if (bytes_transferred < size) {
                     this->async_write_data_to_user_agent(write_buffer, offset + bytes_transferred, size - bytes_transferred);
                 }
@@ -291,7 +285,6 @@ void http_proxy_client_connection::async_write_data_to_proxy_server(const char* 
         net::bind_executor(this->strand, [this, self, write_buffer, offset, size](const std::error_code& error, std::size_t bytes_transferred) {
             if (this->cancel_timer()) {
                 if (!error) {
-                    http_proxy_client_stat::get_instance().on_upgoing_send(static_cast<std::uint32_t>(bytes_transferred));
                     if (bytes_transferred < size) {
                         this->async_write_data_to_proxy_server(write_buffer, offset + bytes_transferred, size - bytes_transferred);
                     }
