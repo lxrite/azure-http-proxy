@@ -12,6 +12,8 @@ if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  add_compile_options("/std:c++17")
 endif()
 
 add_executable(ahpc src/http_proxy_client_main.cpp src/http_proxy_client.cpp src/http_proxy_client_config.cpp src/http_proxy_client_connection.cpp src/jsonxx/jsonxx.cc)
