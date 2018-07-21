@@ -14,8 +14,21 @@ matrix:
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
+    - os: osx
+      compiler: clang
+      env:
+        - OPENSSL_ROOT_DIR="/usr/local/opt/openssl/"
+
 before_install:
   - eval "${MATRIX_EVAL}"
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      brew install llvm
+      export CC="/usr/local/opt/llvm/bin/clang"
+      export CXX="/usr/local/opt/llvm/bin/clang++"
+      export CPPFLAGS="-I/usr/local/opt/llvm/include"
+      export LDFLAGS="-L/usr/local/opt/llvm/lib"
+    fi
 
 script:
   - mkdir build
