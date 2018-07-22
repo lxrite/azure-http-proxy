@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 2.6)
 project(azure-http-proxy)
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
 include_directories("third_party/networking-ts-impl/include")
 
 find_package(OpenSSL REQUIRED)
