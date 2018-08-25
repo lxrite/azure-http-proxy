@@ -113,7 +113,7 @@ bool http_proxy_client_config::load_config(const std::string& config_data)
         this->config_map["cipher"] = cipher;
     }
     else {
-        this->config_map["cipher"] = std::string("aes-256-ofb");
+        this->config_map["cipher"] = std::string("aes-256-cfb");
     }
     if (json_obj.has<jsonxx::Number>("timeout")) {
         int timeout = static_cast<int>(json_obj.get<jsonxx::Number>("timeout"));
