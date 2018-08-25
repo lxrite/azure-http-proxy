@@ -14,40 +14,38 @@ AHP(Azure Http Proxy)是一款高速、安全、轻量级和跨平台的HTTP代�
 
 ## 编译和安装
 
-Windows平台可以从 https://github.com/lxrite/azure-http-proxy/releases 下载已经编译好的(win32-binary.zip)。
-
 ### 编译器
 
-AHP使用了部分C++11特性，所以对编译器的版本有较高要求，下面列出了部分已测试过可以用来编译AHP的编译器
+AHP使用了部分C++17特性，所以对编译器的版本有较高要求，下面列出了部分已测试过可以用来编译AHP的编译器
 
- - Microsoft Visual Studio >= 2013
- - GCC >= 4.8
- - Clang >= 3.2
- - MinGW >= 4.8
+ - Microsoft Visual Studio >= 2017
+ - GCC >= 7.3
+ - Clang >= 6.0
 
-参考：http://en.cppreference.com/w/cpp/compiler_support
+如果你想要使用低版本的编译器（C++11）来编译，可以试试[这个分支](https://github.com/lxrite/azure-http-proxy/tree/cpp11)。
 
 ### 安装依赖
 
-AHP依赖Boost和OpenSSL库，且要求Boost库版本不低于1.52
+ - OpenSSL
 
-绝大多数Linux发行版都可以通过包管理安装Boost和OpenSSL
+#### Linux
 
-#### Ubuntu
+几乎所有的Linux发行版都可以通过包管理安装OpenSSL。
 
-    $ apt-get install libboost-system-dev
-    $ apt-get install libboost-regex-dev
+##### Ubuntu
+
     $ apt-get install libssl-dev
 
-#### Fedora
+##### Fedora
 
-    $ yum install boost-devel
-    $ yum install boost-system
-    $ yum install boost-regex
     $ yum install openssl
     $ yum install openssl-devel
 
-Windows则需要自己编译Boost库，而OpenSSL库可以从 https://www.openssl.org/related/binaries.html 下载到编译好的。
+#### Windows
+
+Windows可以使用[vcpkg](https://github.com/Microsoft/vcpkg)来安装OpenSSL。
+
+    $ vcpkg install openssl
 
 ### 编译
 AHP使用自动化构建工具CMake来实现跨平台构建
@@ -122,7 +120,7 @@ users           | 用户列表           | auth为true时必选 | 无        |
       "bind_address": "127.0.0.1",
       "listen_port": 8089,
       "rsa_public_key": "-----BEGIN PUBLIC KEY----- ...... -----END PUBLIC KEY-----",
-      "cipher": "aes-256-ofb",
+      "cipher": "aes-256-cfb",
       "timeout": 240,
       "workers": 2
     }
@@ -134,7 +132,7 @@ proxy_server_port    | 服务端的端口         | 是               | 无     
 bind_address         | 客户端绑定的IP地址   | 否               | "127.0.0.1"   |
 listen_port          | 客户端的监听端口     | 否               | 8089          |
 rsa_public_key       | RSA公钥              | 是               | 无            |
-cipher               | 加密方法             | 否               | "aes-256-ofb" |
+cipher               | 加密方法             | 否               | "aes-256-cfb" |
 timeout              | 超时时间（秒）       | 否               | 240           |
 workers              | 并发工作线程数       | 否               | 2             |
 
@@ -167,10 +165,7 @@ workers              | 并发工作线程数       | 否               | 2      
 Linux或其他类Unix系统
 
     $ ./ahpc
- 
+
 Windows
- 
+
     $ ahpc.exe
- 
- Enjoy!
- 
