@@ -10,6 +10,7 @@
 #include <regex>
 
 #include "http_header_parser.hpp"
+#include "curi/curi.h"
 
 namespace azure_proxy {
 
@@ -264,22 +265,52 @@ std::optional<http_request_header> http_header_parser::parse_request_header(std:
         }
     }
     else {
-        std::regex regex("(.+?)://(.+?)(:(\\d+))?(/.*)");
-        std::match_results<std::string::iterator> match_results;
-        if (!std::regex_match(request_uri.begin(), request_uri.end(), match_results, regex)) {
+        struct parse_user_data {
+            std::string scheme;
+            std::string host;
+            unsigned int port = 80;
+            std::string path;
+            std::string query;
+        };
+        auto user_data = parse_user_data{};
+
+        curi_settings settings;
+        curi_default_settings(&settings);
+        settings.scheme_callback = [](void* user_data, const char* scheme, size_t scheme_len) -> int {
+            reinterpret_cast<parse_user_data*>(user_data)->scheme = std::string(scheme, scheme_len);
+            return 1;
+        };
+        settings.host_callback = [](void* user_data, const char* host, size_t host_len) -> int {
+            reinterpret_cast<parse_user_data*>(user_data)->host = std::string(host, host_len);
+            return 1;
+        };
+        settings.port_callback = [](void* user_data, unsigned int port) -> int {
+            reinterpret_cast<parse_user_data*>(user_data)->port = port;
+            return 1;
+        };
+        settings.path_callback = [](void* user_data, const char* path, size_t path_len) -> int {
+            reinterpret_cast<parse_user_data*>(user_data)->path = std::string(path, path_len);
+            return 1;
+        };
+        settings.query_callback = [](void* user_data, const char* query, size_t query_len) -> int {
+            reinterpret_cast<parse_user_data*>(user_data)->query = std::string(query, query_len);
+            return 1;
+        };
+        if (curi_status_success != curi_parse_full_uri(request_uri.c_str(), request_uri.size(), &settings, &user_data)) {
             return std::nullopt;
         }
-        header._scheme = match_results[1];
-        header._host = match_results[2];
-        if (match_results[4].matched) {
-            try {
-                header._port = static_cast<unsigned short>(std::stoul(std::string(match_results[4])));
-            }
-            catch (const std::exception&) {
-                return std::nullopt;
-            }
+
+        if (user_data.scheme.empty() || user_data.host.empty() || user_data.path.empty()) {
+            return std::nullopt;
         }
-        header._path_and_query = match_results[5];
+        header._scheme = user_data.scheme;
+        header._host = user_data.host;
+        header._port = user_data.port;
+        header._path_and_query = user_data.path;
+        if (!user_data.query.empty()) {
+            header._path_and_query.push_back('?');
+            header._path_and_query += user_data.query;
+        }
     }
 
     tmp = ++iter;

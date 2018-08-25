@@ -111,7 +111,11 @@ void http_proxy_server_connection::async_connect_to_origin_server()
         auto self(this->shared_from_this());
         this->connection_context.connection_state = proxy_connection_state::resolve_origin_server_address;
         this->set_timer();
-        this->resolver.async_resolve(this->connection_context.origin_server_name, std::to_string(this->connection_context.origin_server_port),
+        auto host = this->request_header->host();
+        if (host.size() >= 2 && host[0] == '[' && host[host.size() - 1] == ']') {
+            host = host.substr(1, host.size() - 2);
+        }
+        this->resolver.async_resolve(host, std::to_string(this->connection_context.origin_server_port),
             net::bind_executor(this->strand, [this, self](const std::error_code& error, net::ip::tcp::resolver::results_type results) {
                 if (this->cancel_timer()) {
                     if (!error) {
