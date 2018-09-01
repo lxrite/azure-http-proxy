@@ -1127,7 +1127,8 @@ static curi_status parse_hier_part(const char* uri, size_t len, size_t* offset, 
     case '[': \
     case ']': \
     case '{': \
-    case '}'
+    case '}': \
+    case '|'
 
 static curi_status parse_query_fragment_char(const char* uri, size_t len, size_t* offset, const curi_settings* settings, void* userData)
 {
