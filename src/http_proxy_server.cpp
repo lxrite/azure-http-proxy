@@ -58,8 +58,8 @@ void http_proxy_server::start_accept()
         if (!error) {
             auto connection = http_proxy_server_connection::create(this->io_ctx, std::move(socket));
             connection->start();
-            this->start_accept();
         }
+        this->start_accept();
     });
 }
 

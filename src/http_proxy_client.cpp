@@ -56,10 +56,10 @@ void http_proxy_client::start_accept()
 {
     this->acceptor.async_accept([this](const std::error_code& error, net::ip::tcp::socket socket) {
         if (!error) {
-            this->start_accept();
             auto connection = http_proxy_client_connection::create(this->io_ctx, std::move(socket));
             connection->start();
         }
+        this->start_accept();
     });
 }
 
