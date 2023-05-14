@@ -1,4 +1,4 @@
-# azure-http-proxy [![Build Status](https://travis-ci.org/lxrite/azure-http-proxy.svg?branch=master)](https://travis-ci.org/lxrite/azure-http-proxy)
+# azure-http-proxy
 
 ## 简介
 
@@ -57,8 +57,8 @@ Windows下可以使用cmake-gui.exe，Linux或其他类Unix系统可以使用下
     $ cd azure-http-proxy
     $ mkdir build
     $ cd build
-    $ cmake ..
-    $ make
+    $ cmake -DCMAKE_BUILD_TYPE=Release ..
+    $ cmake --build .
 
 如果编译成功会生成ahpc（客户端）和ahps（服务端）。
 
