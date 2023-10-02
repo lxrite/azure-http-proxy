@@ -169,3 +169,14 @@ Linux或其他类Unix系统
 Windows
 
     $ ahpc.exe
+
+## 使用Docker
+``` bash
+# 使用拉取到本地的源码进行构建
+docker build . -t lxrite/azure-http-proxy
+# 或者使用URL自动拉取源码构建
+docker build -t lxrite/azure-http-proxy https://github.com/lxrite/azure-http-proxy.git
+
+# 启动 ahps
+docker run -d -p 8090:8090 --mount type=bind,source=/root/.ahps,target=/root/.ahps lxrite/azure-http-proxy ahps
+```
