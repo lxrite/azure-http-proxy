@@ -178,5 +178,5 @@ docker build . -t lxrite/azure-http-proxy
 docker build -t lxrite/azure-http-proxy https://github.com/lxrite/azure-http-proxy.git
 
 # 启动 ahps
-docker run -d -p 8090:8090 --mount type=bind,source=/root/.ahps,target=/root/.ahps lxrite/azure-http-proxy ahps
+docker run -d -p 8090:8090 --mount type=bind,source=$PWD/server.json,target=/root/.ahps/server.json lxrite/azure-http-proxy ahps
 ```
