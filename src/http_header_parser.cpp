@@ -10,7 +10,7 @@
 #include <regex>
 
 #include "http_header_parser.hpp"
-#include "curi/curi.h"
+#include <curi.h>
 
 namespace azure_proxy {
 

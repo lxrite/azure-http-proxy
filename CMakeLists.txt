@@ -20,11 +20,17 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_compile_options("/std:c++17")
 endif()
 
-add_executable(ahpc src/http_proxy_client_main.cpp src/http_proxy_client.cpp src/http_proxy_client_config.cpp src/http_proxy_client_connection.cpp src/jsonxx/jsonxx.cc)
-target_link_libraries(ahpc ${OPENSSL_LIBRARIES})
+include_directories("third_party/jsonxx")
+add_library(jsonxx STATIC third_party/jsonxx/jsonxx.cc)
 
-add_executable(ahps src/http_proxy_server_main.cpp src/http_proxy_server.cpp src/http_proxy_server_config.cpp src/http_proxy_server_connection.cpp src/http_header_parser.cpp src/base64.cpp src/authentication.cpp src/jsonxx/jsonxx.cc src/curi/curi.c)
-target_link_libraries(ahps ${OPENSSL_LIBRARIES})
+include_directories("third_party/curi/src")
+add_subdirectory(third_party/curi/src)
+
+add_executable(ahpc src/http_proxy_client_main.cpp src/http_proxy_client.cpp src/http_proxy_client_config.cpp src/http_proxy_client_connection.cpp)
+target_link_libraries(ahpc ${OPENSSL_LIBRARIES} jsonxx)
+
+add_executable(ahps src/http_proxy_server_main.cpp src/http_proxy_server.cpp src/http_proxy_server_config.cpp src/http_proxy_server_connection.cpp src/http_header_parser.cpp src/base64.cpp src/authentication.cpp)
+target_link_libraries(ahps ${OPENSSL_LIBRARIES} jsonxx curi)
 
 if(UNIX)
   target_link_libraries(ahpc pthread)

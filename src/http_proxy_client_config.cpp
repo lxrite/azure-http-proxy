@@ -22,7 +22,7 @@ extern "C" {
 
 #include "encrypt.hpp"
 #include "http_proxy_client_config.hpp"
-#include "jsonxx/jsonxx.h"
+#include <jsonxx.h>
 
 namespace azure_proxy {
 
