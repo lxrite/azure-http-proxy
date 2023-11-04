@@ -22,8 +22,6 @@ AHP使用了部分C++17特性，所以对编译器的版本有较高要求，下
  - GCC >= 7.3
  - Clang >= 6.0
 
-如果你想要使用低版本的编译器（C++11）来编译，可以试试[这个分支](https://github.com/lxrite/azure-http-proxy/tree/cpp11)。
-
 ### 安装依赖
 
  - OpenSSL
@@ -34,18 +32,24 @@ AHP使用了部分C++17特性，所以对编译器的版本有较高要求，下
 
 ##### Ubuntu
 
-    $ apt-get install libssl-dev
+```shell
+$ apt-get install libssl-dev
+```
 
-##### Fedora
+##### CentOS
 
-    $ yum install openssl
-    $ yum install openssl-devel
+```shell
+$ yum install openssl
+$ yum install openssl-devel
+```
 
 #### Windows
 
 Windows可以使用[vcpkg](https://github.com/Microsoft/vcpkg)来安装OpenSSL。
 
-    $ vcpkg install openssl
+```shell
+$ vcpkg install openssl
+```
 
 ### 编译
 AHP使用自动化构建工具CMake来实现跨平台构建
@@ -53,12 +57,13 @@ AHP使用自动化构建工具CMake来实现跨平台构建
  - CMake >= 2.8
 
 Windows下可以使用cmake-gui.exe，Linux或其他类Unix系统可以使用下面的命令编译
-
-    $ cd azure-http-proxy
-    $ mkdir build
-    $ cd build
-    $ cmake -DCMAKE_BUILD_TYPE=Release ..
-    $ cmake --build .
+```shell
+$ cd azure-http-proxy
+$ mkdir build
+$ cd build
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
+$ cmake --build .
+```
 
 如果编译成功会生成ahpc（客户端）和ahps（服务端）。
 
@@ -71,34 +76,36 @@ OpenWrt/LEDE 编译参考 [openwrt-ahp](https://github.com/lxrite/openwrt-ahp)
 注意：不要使用示例配置中的RSA私钥和公钥，因为私钥一公开就是不安全的了。
 
 如果你要运行的是服务端，那么你首先需要生成一对RSA密钥对，AHP支持任意长度不小于1024位的RSA密钥。下面的命令使用openssl生成2048位的私钥和公钥
-
-    $ openssl genrsa -out rsa_private_key.pem 2048
-    $ openssl rsa -in rsa_private_key.pem -pubout -out rsa_public_key.pem
+```shell
+$ openssl genrsa -out rsa_private_key.pem 2048
+$ openssl rsa -in rsa_private_key.pem -pubout -out rsa_public_key.pem
+```
 
 服务端保留私钥并将公钥告诉客户端。
 
 ### 配置服务端 
 
-编辑server.json文件，Windows下应将此文件放到ahps.exe同目录下，Linux或其他类Unix系统将此文件放到~/.ahps/server.json。
-
+编辑`server.json`文件
+```json
+{
+  "bind_address": "0.0.0.0",
+  "listen_port": 8090,
+  "rsa_private_key": "-----BEGIN RSA PRIVATE KEY----- ...... -----END RSA PRIVATE KEY-----",
+  "timeout": 240,
+  "workers": 4,
+  "auth": true,
+  "users": [
     {
-      "bind_address": "0.0.0.0",
-      "listen_port": 8090,
-      "rsa_private_key": "-----BEGIN RSA PRIVATE KEY----- ...... -----END RSA PRIVATE KEY-----",
-      "timeout": 240,
-      "workers": 4,
-      "auth": true,
-      "users": [
-        {
-          "username": "username1",
-          "password": "password1"
-        },
-        {
-          "username": "foobar",
-          "password": "bazqux"
-        }
-      ]
+      "username": "username1",
+      "password": "password1"
+    },
+    {
+      "username": "foobar",
+      "password": "bazqux"
     }
+  ]
+}
+```
 
 字段名          | 描述               | 是否必选         | 默认值    |
 ----------------|--------------------|------------------|-----------|
@@ -112,18 +119,19 @@ users           | 用户列表           | auth为true时必选 | 无        |
 
 ### 配置客户端
 
-编辑client.json文件，Windows下应将此文件放到ahpc.exe或ahpc-gui.exe同目录下，Linux或其他类Unix系统将此文件放到~/.ahpc/client.json。
-
-    {
-      "proxy_server_address": "127.0.0.1",
-      "proxy_server_port": 8090,
-      "bind_address": "127.0.0.1",
-      "listen_port": 8089,
-      "rsa_public_key": "-----BEGIN PUBLIC KEY----- ...... -----END PUBLIC KEY-----",
-      "cipher": "aes-256-cfb",
-      "timeout": 240,
-      "workers": 2
-    }
+编辑`client.json`文件
+```json
+{
+  "proxy_server_address": "127.0.0.1",
+  "proxy_server_port": 8090,
+  "bind_address": "127.0.0.1",
+  "listen_port": 8089,
+  "rsa_public_key": "-----BEGIN PUBLIC KEY----- ...... -----END PUBLIC KEY-----",
+  "cipher": "aes-256-cfb",
+  "timeout": 240,
+  "workers": 2
+}
+```
 
 字段名               | 描述                 | 是否必选         | 默认值        |
 ---------------------|----------------------|------------------|---------------|
@@ -152,31 +160,35 @@ workers              | 并发工作线程数       | 否               | 2      
 
 ### 运行服务端
 
- Linux或其他类Unix系统
- 
-    $ ./ahps
- 
- Windows
- 
-    $ ahps.exe
- 
+Linux或其他类Unix系统
+```shell
+$ ./ahps -c server.json
+```
+
+Windows
+```shell
+$ ahps.exe -c server.json
+``` 
+
 ### 运行客户端
 
 Linux或其他类Unix系统
-
-    $ ./ahpc
+```shell
+$ ./ahpc -c client.json
+```
 
 Windows
-
-    $ ahpc.exe
+```shell
+$ ahpc.exe -c client.json
+```
 
 ## 使用Docker
-``` bash
+```shell
 # 使用拉取到本地的源码进行构建
 docker build . -t lxrite/azure-http-proxy
 # 或者使用URL自动拉取源码构建
 docker build -t lxrite/azure-http-proxy https://github.com/lxrite/azure-http-proxy.git
 
 # 启动 ahps
-docker run -d -p 8090:8090 --mount type=bind,source=$PWD/server.json,target=/root/.ahps/server.json lxrite/azure-http-proxy ahps
+docker run -d -p 8090:8090 --mount type=bind,source=$PWD/server.json,target=/data/ahp/server.json lxrite/azure-http-proxy ahps -c /data/ahp/server.json
 ```
