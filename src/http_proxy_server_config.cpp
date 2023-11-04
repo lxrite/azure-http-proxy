@@ -5,17 +5,15 @@
  *
  */
 
-#include <memory>
+#include <algorithm>
+#include <cctype>
 #include <fstream>
+#include <memory>
+#include <string>
 
 #ifdef _WIN32
+#include <codecvt>
 #include <Windows.h>
-#else
-extern "C" {
-#include <unistd.h>
-#include <sys/types.h>
-#include <pwd.h>
-}
 #endif
 
 #include "authentication.hpp"
@@ -29,7 +27,7 @@ http_proxy_server_config::http_proxy_server_config()
 {
 }
 
-bool http_proxy_server_config::load_config(const std::string& config_data)
+bool http_proxy_server_config::load_config_data(const std::string& config_data)
 {
     bool rollback = true;
     std::shared_ptr<bool> auto_rollback(&rollback, [this](bool* rollback) {
@@ -111,17 +109,12 @@ bool http_proxy_server_config::load_config(const std::string& config_data)
     return true;
 }
 
-bool http_proxy_server_config::load_config()
+bool http_proxy_server_config::load_config(const std::string& config_path)
 {
     std::string config_data;
 #ifdef _WIN32
-    wchar_t path_buffer[MAX_PATH];
-    if (GetModuleFileNameW(NULL, path_buffer, MAX_PATH) == 0 || GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
-        std::cerr << "Failed to get retrieve the path of the executable file" << std::endl;
-    }
-    std::wstring config_file_path(path_buffer);
-    config_file_path.resize(config_file_path.find_last_of(L'\\') + 1);
-    config_file_path += L"server.json";
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring config_file_path = converter.from_bytes(config_path);
     std::shared_ptr<std::remove_pointer<HANDLE>::type> config_file_handle(
         CreateFileW(config_file_path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL),
         [](HANDLE native_handle) {
@@ -145,18 +138,6 @@ bool http_proxy_server_config::load_config()
         return false;
     }
 #else
-    auto bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-    if (bufsize == -1) {
-        bufsize = 16384;
-    }
-    std::unique_ptr<char[]> buf(new char[bufsize]);
-    passwd pwd, *result = nullptr;
-    getpwuid_r(getuid(), &pwd, buf.get(), bufsize, &result);
-    if (result == nullptr) {
-        return false;
-    }
-    std::string config_path = pwd.pw_dir;
-    config_path += "/.ahps/server.json";
     std::ifstream ifile(config_path.c_str());
     if (!ifile.is_open()) {
         std::cerr << "Failed to open \"" << config_path << "\"" << std::endl;
@@ -167,7 +148,7 @@ bool http_proxy_server_config::load_config()
         config_data.push_back(ch);
     }
 #endif
-    return this->load_config(config_data);
+    return this->load_config_data(config_data);
 }
 
 const std::string& http_proxy_server_config::get_bind_address() const
