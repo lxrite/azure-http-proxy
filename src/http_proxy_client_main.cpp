@@ -28,9 +28,9 @@ struct ClientArgs {
 
 void print_usage() {
 #ifdef _WIN32
-    const char *prog = "ahpc";
-#else
     const char *prog = "ahpc.exe";
+#else
+    const char *prog = "ahpc";
 #endif
     std::cout << "Usage: " << prog << " [options]\n\n"
               << "options:\n"

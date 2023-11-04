@@ -28,15 +28,15 @@ struct ServerArgs {
 
 void print_usage() {
 #ifdef _WIN32
-    const char *prog = "ahps";
-#else
     const char *prog = "ahps.exe";
+#else
+    const char *prog = "ahps";
 #endif
     std::cout << "Usage: " << prog << " [options]\n\n"
               << "options:\n"
               << "  -h, --help              Show this help message and exit\n"
               << "  -v, --version           Print the program version and exit\n"
-              << "  -c, --config PATH       Configuration file path (default: client.json)\n";
+              << "  -c, --config PATH       Configuration file path (default: server.json)\n";
 }
 
 static ServerArgs parse_args(const std::vector<std::string>& argv) {
