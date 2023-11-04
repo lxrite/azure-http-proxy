@@ -17,7 +17,7 @@
 
 #ifdef _WIN32
 #include <codecvt>
-#include <windows.h>
+#include <shellapi.h>
 #endif
 
 namespace net = std::experimental::net;
@@ -80,7 +80,7 @@ static ServerArgs parse_args(int argc, char** argv) {
 
 #ifdef _WIN32
     LPWSTR *wargs = CommandLineToArgvW(GetCommandLineW(), &argc);
-    CHATGLM_CHECK(wargs) << "Failed to retrieve command line arguments";
+    std::cerr << "Failed to retrieve command line arguments" << std::endl;
 
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     for (std::size_t i = 0; i < argc; ++i) {
