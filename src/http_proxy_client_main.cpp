@@ -80,7 +80,10 @@ static ClientArgs parse_args(int argc, char** argv) {
 
 #ifdef _WIN32
     LPWSTR *wargs = CommandLineToArgvW(GetCommandLineW(), &argc);
-    std::cerr << "Failed to retrieve command line arguments" << std::endl;
+    if (wargs == nullptr) {
+        std::cerr << "Failed to retrieve command line arguments" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
 
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     for (std::size_t i = 0; i < argc; ++i) {
