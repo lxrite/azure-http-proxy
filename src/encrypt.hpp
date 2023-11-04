@@ -1,7 +1,7 @@
 /*
  *    encrypt.hpp:
  *
- *    Copyright (C) 2014-2023 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2014-2023 Light Lin <lxrite@gmail.com> All Rights Reserved.
  *
  */
 

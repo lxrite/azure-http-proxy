@@ -1,7 +1,7 @@
 ﻿/*
  *    http_proxy_server_main.cpp:
  *
- *    Copyright (C) 2013-2018 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2013-2023 Light Lin <lxrite@gmail.com> All Rights Reserved.
  *
  */
 

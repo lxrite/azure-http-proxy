@@ -1,7 +1,7 @@
 /*
  *    authentication.hpp:
  *
- *    Copyright (C) 2015 limhiaoing <blog.poxiao.me> All Rights Reserved.
+ *    Copyright (C) 2015-2023 Light Lin <lxrite@gmail.com> All Rights Reserved.
  *
  */
 
