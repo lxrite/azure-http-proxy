@@ -125,6 +125,11 @@ bool http_proxy_client_config::load_config_data(const std::string& config_data)
     else {
         this->config_map["workers"] = 2u;
     }
+    std::string auth_key;
+    if (json_obj.has<jsonxx::String>("auth_key")) {
+        auth_key = std::string(json_obj.get<jsonxx::String>("auth_key"));
+    }
+    this->config_map["auth_key"] = auth_key;
 
     rollback = false;
     return true;
@@ -210,6 +215,11 @@ unsigned int http_proxy_client_config::get_timeout() const
 unsigned int http_proxy_client_config::get_workers() const
 {
     return this->get_config_value<unsigned int>("workers");
+}
+
+const std::string& http_proxy_client_config::get_auth_key() const
+{
+    return this->get_config_value<const std::string&>("auth_key");
 }
 
 http_proxy_client_config& http_proxy_client_config::get_instance()

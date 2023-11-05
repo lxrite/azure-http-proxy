@@ -8,26 +8,22 @@
 #ifndef AZURE_AUTHENTICATION_HPP
 #define AZURE_AUTHENTICATION_HPP
 
+#include <array>
 #include <map>
 #include <string>
 
 namespace azure_proxy {
 
-enum class auth_result {
-    ok,
-    incorrect,
-    error
-};
+using auth_key_hash_t = std::array<unsigned char, 32>;
 
 class authentication {
-    std::map<std::string, std::string> users_map;
+    std::map<auth_key_hash_t, std::string> auth_keys_map;
 private:
     authentication();
-    auth_result auth_basic(const std::string::const_iterator begin, const std::string::const_iterator end) const;
 public:
-    auth_result auth(const std::string& value) const;
-    void add_user(const std::string& username, const std::string& password);
-    void remove_all_users();
+    bool auth(const auth_key_hash_t& auth_key_hash) const;
+    void add_auth_key(const std::string& auth_key);
+    void remove_all_auth_keys();
 
     static authentication& get_instance();
 };
