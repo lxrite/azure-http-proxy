@@ -303,32 +303,6 @@ void http_proxy_server_connection::report_error(const std::string& status_code, 
     this->async_write_data_to_proxy_client(this->modified_response_data.data(), 0 ,this->modified_response_data.size());
 }
 
-void http_proxy_server_connection::report_authentication_failed()
-{
-    std::string content = "<!DOCTYPE html><html><head><title>407 Proxy Authentication Required</title></head>";
-    content += "<body bgcolor=\"white\"><center><h1>407 Proxy Authentication Required</h1></center><hr><center>azure http proxy server</center></body></html>";
-    this->modified_response_data = "HTTP/1.1 407 Proxy Authentication Required\r\n";
-    this->modified_response_data += "Server: AzureHttpProxy\r\n";
-    this->modified_response_data += "Proxy-Authenticate: Basic realm=\"AzureHttpProxy\"\r\n";
-    this->modified_response_data += "Content-Type: text/html\r\n";
-    this->modified_response_data += "Connection: Close\r\n";
-    this->modified_response_data += "Content-Length: ";
-    this->modified_response_data += std::to_string(content.size());
-    this->modified_response_data += "\r\n\r\n";
-    this->modified_response_data += content;
-    unsigned char temp_buffer[16];
-    for (std::size_t i = 0; i * 16 < this->modified_response_data.size(); ++i) {
-        std::size_t block_length = 16;
-        if (this->modified_response_data.size() - i * 16 < 16) {
-            block_length = this->modified_response_data.size() % 16;
-        }
-        this->encryptor->encrypt(reinterpret_cast<const unsigned char*>(&this->modified_response_data[i * 16]), temp_buffer, block_length);
-        std::copy(temp_buffer, temp_buffer + block_length, reinterpret_cast<unsigned char*>(&this->modified_response_data[i * 16]));
-    }
-    this->connection_context.connection_state = proxy_connection_state::report_error;
-    this->async_write_data_to_proxy_client(this->modified_response_data.data(), 0, this->modified_response_data.size());
-}
-
 void http_proxy_server_connection::set_timer()
 {
     if (this->timer.expires_after(std::chrono::seconds(http_proxy_server_config::get_instance().get_timeout())) != 0) {
@@ -419,11 +393,33 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
 
         if (decrypted_cipher_info[0] != 'A' ||
             decrypted_cipher_info[1] != 'H' ||
-            decrypted_cipher_info[2] != 'P' ||
-            decrypted_cipher_info[3] != 0 ||
-            decrypted_cipher_info[4] != 0 ||
-            decrypted_cipher_info[6] != 0
-            ) {
+            decrypted_cipher_info[2] != 'P') {
+            return;
+        }
+
+        unsigned char protocol_version = decrypted_cipher_info[3];
+        auto need_auth = http_proxy_server_config::get_instance().enable_auth();
+        if (protocol_version == 0) {
+            if (need_auth || decrypted_cipher_info[4] != 0 || decrypted_cipher_info[6] != 0) {
+                return;
+            }
+        } else if (protocol_version == 1) {
+            if (need_auth) {
+                // 4 auth type
+                // - 0 no authentication
+                // - 1 32 bytes auth_key
+                auto auth_type = decrypted_cipher_info[4];
+                if (auth_type != 1) {
+                    return;
+                }
+                // 6 ~ 37 auth_key
+                std::array<unsigned char, 32> auth_key_hash;
+                std::copy(decrypted_cipher_info.cbegin() + 6, decrypted_cipher_info.cbegin() + 38, auth_key_hash.begin());
+                if (!authentication::get_instance().auth(auth_key_hash)) {
+                    return;
+                }
+            }
+        } else {
             return;
         }
 
@@ -445,6 +441,8 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
         // 0x0D aes-256-ofb
         // 0x0E aes-256-ctr
         unsigned char cipher_code = decrypted_cipher_info[5];
+        std::size_t ivec_offset = protocol_version == 0 ? 7 : 38;
+        std::size_t cipher_key_offset = protocol_version == 0 ? 23 : 54;
         if (cipher_code == '\x00' || cipher_code == '\x05' || cipher_code == '\x0A') {
             // aes-xxx-cfb
             std::size_t ivec_size = 16;
@@ -457,8 +455,8 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
                 // aes-192-cfb
                 key_bits = 192;
             }
-            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb128_encryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
-            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb128_decryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb128_encryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
+            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb128_decryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
         }
         else if (cipher_code == '\x01' || cipher_code == '\x06' || cipher_code == '\x0B') {
             // ase-xxx-cfb8
@@ -472,8 +470,8 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
                 // aes-192-cfb8
                 key_bits = 192;
             }
-            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb8_encryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
-            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb8_decryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb8_encryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
+            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb8_decryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
         }
         else if (cipher_code == '\x02' || cipher_code == '\x07' || cipher_code == '\x0C') {
             // ase-xxx-cfb1
@@ -487,8 +485,8 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
                 // aes-192-cfb1
                 key_bits = 192;
             }
-            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb1_encryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
-            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb1_decryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb1_encryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
+            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb1_decryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
         }
         else if (cipher_code == '\x03' || cipher_code == '\x08' || cipher_code == '\x0D') {
             // ase-xxx-ofb
@@ -502,8 +500,8 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
                 // aes-192-ofb
                 key_bits = 192;
             }
-            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_ofb128_encryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
-            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_ofb128_decryptor(&decrypted_cipher_info[23], key_bits, &decrypted_cipher_info[7]));
+            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_ofb128_encryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
+            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_ofb128_decryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
         }
         else if (cipher_code == '\x04' || cipher_code == '\x09' || cipher_code == '\x0E') {
             // ase-xxx-ctr
@@ -518,8 +516,8 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
                 key_bits = 192;
             }
             std::vector<unsigned char> ivec(ivec_size, 0);
-            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_ctr128_encryptor(&decrypted_cipher_info[23], key_bits, ivec.data()));
-            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_ctr128_decryptor(&decrypted_cipher_info[23], key_bits, ivec.data()));
+            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_ctr128_encryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, ivec.data()));
+            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_ctr128_decryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, ivec.data()));
         }
         if (this->encryptor == nullptr || this->decryptor == nullptr) {
             return;
@@ -565,20 +563,6 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
             && this->request_header->http_version() != "1.0") {
             this->report_error("505", "HTTP Version Not Supported", std::string());
             return;
-        }
-
-        if (http_proxy_server_config::get_instance().enable_auth()) {
-            auto proxy_authorization_value = this->request_header->get_header_value("Proxy-Authorization");
-            bool auth_success = false;
-            if (proxy_authorization_value) {
-                if (authentication::get_instance().auth(*proxy_authorization_value) == auth_result::ok) {
-                    auth_success = true;
-                }
-            }
-            if (!auth_success) {
-                this->report_authentication_failed();
-                return;
-            }
         }
 
         if (this->request_header->method() == "CONNECT") {

@@ -5,14 +5,11 @@
     "timeout": 240,
     "workers": 4,
     "auth": true,
-    "users": [
-        {
-            "username": "username1",
-            "password": "password1"
-        },
-        {
-            "username": "foobar",
-            "password": "bazqux"
-        }
+    "auth_key_list": [
+        "testing_key",
+        "Bob",
+        "Alice",
+        "+ZI1w$u9N65lTw*nL@$",
+        "SoHPa4xNMBWoXxSOp+6snUtqtdXFH(MO"
     ]
 }

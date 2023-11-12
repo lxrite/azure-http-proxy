@@ -63,7 +63,6 @@ private:
     void async_write_data_to_proxy_client(const char* write_buffer, std::size_t offset, std::size_t size);
     void start_tunnel_transfer();
     void report_error(const std::string& status_code, const std::string& status_description, const std::string& error_message);
-    void report_authentication_failed();
 
     void set_timer();
     bool cancel_timer();

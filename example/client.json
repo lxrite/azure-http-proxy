@@ -6,5 +6,6 @@
     "rsa_public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxPbPBU61RYBI0rUDVso+\nTzkQ7bXO1j4GWxbYZ3nEL6sLbrftv7rpYq5uPLi9DdJ3ZoEUjxlnO+VUOOtm7LpR\nGmWqUQdNnYHuiZU1UuH7pDIXejQwwSC698FB1kwnoxV4LICkiA1a4qucqlnG8nN6\ngBFs3/1K2DuUs0Hg1hZKlkOq/ONR82XGhXkB/HVwmfgQlZpVbWHQDsZiOv1SUnQW\n8Zs6E/JmW6llBkWtsQT9nQ2uzcV1JGzV0ltB4N0CMC8u2zv/LLTSgS4IKrVicAqO\n9TWkGOFmGowV7PpEAEQC1WcBXThLpUYk2QqiSvTTLTdFNmwEH+hKa1ZBPqOcaTA1\ndQIDAQAB\n-----END PUBLIC KEY-----",
     "cipher": "aes-256-cfb",
     "timeout": 240,
-    "workers": 2
+    "workers": 2,
+    "auth_key": "testing_key"
 }

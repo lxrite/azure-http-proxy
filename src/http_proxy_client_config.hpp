@@ -40,6 +40,7 @@ public:
     const std::string& get_cipher() const;
     unsigned int get_timeout() const;
     unsigned int get_workers() const;
+    const std::string& get_auth_key() const;
 
     static http_proxy_client_config& get_instance();
 };

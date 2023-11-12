@@ -9,7 +9,7 @@
 #include <iterator>
 
 #include "authentication.hpp"
-#include "base64.hpp"
+#include "hash_utils.hpp"
 
 namespace azure_proxy {
 
@@ -17,46 +17,20 @@ authentication::authentication()
 {
 }
 
-auth_result authentication::auth_basic(const std::string::const_iterator begin, const std::string::const_iterator end) const
+bool authentication::auth(const auth_key_hash_t& auth_key_hash) const
 {
-    std::string authorization;
-    try {
-        azure_proxy::encoding::base64_decode(begin, end, std::back_inserter(authorization));
-    }
-    catch (const azure_proxy::encoding::decode_base64_error&) {
-        return auth_result::error;
-    }
-    auto colon_pos = authorization.find(':');
-    if (colon_pos == std::string::npos) {
-        return auth_result::error;
-    }
-    std::string username(authorization.begin(), authorization.begin() + colon_pos);
-    std::string password(authorization.begin() + colon_pos + 1, authorization.end());
-    auto iter = this->users_map.find(username);
-    if (iter != this->users_map.end() && std::get<1>(*iter) == password) {
-        return auth_result::ok;
-    }
-    return auth_result::incorrect;
+    return this->auth_keys_map.find(auth_key_hash) != this->auth_keys_map.end();
 }
 
-auth_result authentication::auth(const std::string& value) const
+void authentication::add_auth_key(const std::string& auth_key)
 {
-    if (value.size() > 6 && std::equal(value.begin(), value.begin() + 6, "Basic ")) {
-        return this->auth_basic(value.begin() + 6, value.end());
-    }
-    else {
-        return auth_result::error;
-    }
+    auto auth_key_hash = hash_utils::sha256(reinterpret_cast<const unsigned char*>(auth_key.data()), auth_key.size());
+    this->auth_keys_map[auth_key_hash] = auth_key;
 }
 
-void authentication::add_user(const std::string& username, const std::string& password)
+void authentication::remove_all_auth_keys()
 {
-    this->users_map[username] = password;
-}
-
-void authentication::remove_all_users()
-{
-    this->users_map.clear();
+    this->auth_keys_map.clear();
 }
 
 authentication& authentication::get_instance()

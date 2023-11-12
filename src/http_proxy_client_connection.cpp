@@ -12,6 +12,7 @@
 #include "http_proxy_client_config.hpp"
 #include "http_proxy_client_connection.hpp"
 #include "key_generator.hpp"
+#include "hash_utils.hpp"
 
 namespace azure_proxy {
 
@@ -44,10 +45,18 @@ void http_proxy_client_connection::start()
     cipher_info_raw[1] = 'H';
     cipher_info_raw[2] = 'P';
 
-    // 3 zero
-    // 4 zero
+    // 3 protocol version
+    // - 0: version 1.0
+    // - 1: since version 1.1, support 32 bytes auth_key_hash
+    unsigned char protocol_version = 1;
+    const auto &auth_key = http_proxy_client_config::get_instance().get_auth_key();
+    bool has_auth_key = !auth_key.empty();
+    if (!has_auth_key) {
+        // Use old protocol to be compatible with version 1.0
+        protocol_version = 0;
+    }
 
-    // 5 cipher code
+    // cipher code
     // 0x00 aes-128-cfb
     // 0x01 aes-128-cfb8
     // 0x02 aes-128-cfb1
@@ -65,11 +74,11 @@ void http_proxy_client_connection::start()
     // 0x0E aes-256-ctr
 
     unsigned char cipher_code = 0;
+    std::vector<unsigned char> ivec(16);
+    std::vector<unsigned char> key_vec;
     const auto& cipher_name = http_proxy_client_config::get_instance().get_cipher();
     if (cipher_name.size() > 7 && std::equal(cipher_name.begin(), cipher_name.begin() + 3, "aes")) {
         // aes
-        std::vector<unsigned char> ivec(16);
-        std::vector<unsigned char> key_vec;
         assert(cipher_name[3] == '-' && cipher_name[7] == '-');
         if (std::strcmp(cipher_name.c_str() + 8, "cfb") == 0 || std::strcmp(cipher_name.c_str() + 8, "cfb128") == 0) {
             // aes-xxx-cfb
@@ -166,20 +175,41 @@ void http_proxy_client_connection::start()
             this->encryptor = std::unique_ptr<stream_encryptor>(new aes_ctr128_encryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
             this->decryptor = std::unique_ptr<stream_decryptor>(new aes_ctr128_decryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
         }
-        // 7 ~ 22 ivec
-        // 23 ~ key
-        std::copy(ivec.cbegin(), ivec.cend(), cipher_info_raw.begin() + 7);
-        std::copy(key_vec.cbegin(), key_vec.cend(), cipher_info_raw.begin() + 23);
     }
 
     if (!this->encryptor || !this->decryptor) {
         return;
     }
 
-    // 5 cipher code
-    cipher_info_raw[5] = static_cast<char>(cipher_code); 
-
-    // 6 zero
+    // 3 protocol version
+    cipher_info_raw[3] = protocol_version;
+    if (protocol_version == 0) {
+        // 4 zero
+        // 5 cipher code
+        cipher_info_raw[5] = cipher_code;
+        // 6 zero
+        // 7 ~ 22 ivec
+        std::copy(ivec.cbegin(), ivec.cend(), cipher_info_raw.begin() + 7);
+        // 23 ~ (38/46/54) cipher key
+        std::copy(key_vec.cbegin(), key_vec.cend(), cipher_info_raw.begin() + 23);
+    } else {
+        // 4 auth type
+        // - 0 no authentication
+        // - 1 32 bytes auth_key_hash
+        unsigned char auth_type = has_auth_key ? 1 : 0;
+        cipher_info_raw[4] = auth_type;
+        // 5 cipher code
+        cipher_info_raw[5] = cipher_code;
+        // 6 ~ 37 auth_key_hash
+        if (auth_type == 1) {
+            auto auth_key_hash = hash_utils::sha256(reinterpret_cast<const unsigned char*>(auth_key.data()), auth_key.size());
+            std::copy(auth_key_hash.cbegin(), auth_key_hash.cend(), cipher_info_raw.begin() + 6);
+        }
+        // 38 ~ 53 ivec
+        std::copy(ivec.cbegin(), ivec.cend(), cipher_info_raw.begin() + 38);
+        // 54 ~ (69/77/85) cipher key
+        std::copy(key_vec.cbegin(), key_vec.cend(), cipher_info_raw.begin() + 54);
+    }
 
     rsa rsa_pub(http_proxy_client_config::get_instance().get_rsa_public_key());
     if (rsa_pub.modulus_size() < 128) {
