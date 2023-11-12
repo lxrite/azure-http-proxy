@@ -1,10 +1,7 @@
-FROM ubuntu:22.04 as builder
+FROM alpine:3.18 as builder
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=UTC
-
-RUN apt-get update \
-    && apt-get install -yq gcc g++ make cmake libssl-dev
+RUN apk update \
+    && apk add alpine-sdk cmake openssl-dev linux-headers
 
 WORKDIR /ahp
 
@@ -13,7 +10,9 @@ COPY . .
 RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
     && cmake --build build
 
-FROM ubuntu:22.04
+FROM alpine:3.18
+
+RUN apk update && apk add libgcc libstdc++ openssl
 
 COPY --from=builder /ahp/build/ahps /usr/local/bin/ahps
 COPY --from=builder /ahp/build/ahpc /usr/local/bin/ahpc
