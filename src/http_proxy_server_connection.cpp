@@ -1,7 +1,7 @@
 /*
  *    http_proxy_server_connection.cpp:
  *
- *    Copyright (C) 2013-2023 Light Lin <lxrite@gmail.com> All Rights Reserved.
+ *    Copyright (C) 2013-2024 Light Lin <lxrite@gmail.com> All Rights Reserved.
  *
  */
 
@@ -387,7 +387,7 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
         assert(this->encrypted_cipher_info.size() == this->rsa_pri.modulus_size());
         std::vector<unsigned char> decrypted_cipher_info(this->rsa_pri.modulus_size());
 
-        if (86 != this->rsa_pri.decrypt(this->rsa_pri.modulus_size(), this->encrypted_cipher_info.data(), decrypted_cipher_info.data(), rsa_padding::pkcs1_oaep_padding)) {
+        if (86 != this->rsa_pri.decrypt(this->rsa_pri.modulus_size(), this->encrypted_cipher_info.data(), decrypted_cipher_info.data())) {
             return;
         }
 
@@ -470,8 +470,10 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
                 // aes-192-cfb8
                 key_bits = 192;
             }
+#ifndef AHP_USE_MBEDTLS
             this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb8_encryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
             this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb8_decryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
+#endif
         }
         else if (cipher_code == '\x02' || cipher_code == '\x07' || cipher_code == '\x0C') {
             // ase-xxx-cfb1
@@ -485,8 +487,10 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
                 // aes-192-cfb1
                 key_bits = 192;
             }
+#ifndef AHP_USE_MBEDTLS
             this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb1_encryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
             this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb1_decryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
+#endif
         }
         else if (cipher_code == '\x03' || cipher_code == '\x08' || cipher_code == '\x0D') {
             // ase-xxx-ofb

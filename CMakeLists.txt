@@ -5,12 +5,18 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+option(AHP_USE_MBEDTLS "ahp: use MbedTLS" OFF)
+
 include_directories("third_party/networking-ts-impl/include")
 
-find_package(OpenSSL REQUIRED)
-
-include_directories(${OPENSSL_INCLUDE_DIR})
-link_directories(${OPENSSL_LIBRARY_DIR})
+if (AHP_USE_MBEDTLS)
+  add_compile_definitions(AHP_USE_MBEDTLS)
+  find_package(MbedTLS REQUIRED)
+else ()
+  find_package(OpenSSL REQUIRED)
+  include_directories(${OPENSSL_INCLUDE_DIR})
+  link_directories(${OPENSSL_LIBRARY_DIR})
+endif ()
 
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
@@ -27,10 +33,18 @@ include_directories("third_party/curi/src")
 add_subdirectory(third_party/curi/src)
 
 add_executable(ahpc src/http_proxy_client_main.cpp src/http_proxy_client.cpp src/http_proxy_client_config.cpp src/http_proxy_client_connection.cpp src/hash_utils.cpp)
-target_link_libraries(ahpc ${OPENSSL_LIBRARIES} jsonxx)
+if (AHP_USE_MBEDTLS)
+  target_link_libraries(ahpc MbedTLS::mbedtls jsonxx)
+else ()
+  target_link_libraries(ahpc ${OPENSSL_LIBRARIES} jsonxx)
+endif ()
 
 add_executable(ahps src/http_proxy_server_main.cpp src/http_proxy_server.cpp src/http_proxy_server_config.cpp src/http_proxy_server_connection.cpp src/http_header_parser.cpp src/hash_utils.cpp src/authentication.cpp)
-target_link_libraries(ahps ${OPENSSL_LIBRARIES} jsonxx curi)
+if (AHP_USE_MBEDTLS)
+  target_link_libraries(ahps MbedTLS::mbedtls jsonxx curi)
+else ()
+  target_link_libraries(ahps ${OPENSSL_LIBRARIES} jsonxx curi)
+endif ()
 
 if(UNIX)
   target_link_libraries(ahpc pthread)

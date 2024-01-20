@@ -1,7 +1,7 @@
 ﻿/*
  *    http_proxy_client_connection.cpp:
  *
- *    Copyright (C) 2013-2023 Light Lin <lxrite@gmail.com> All Rights Reserved.
+ *    Copyright (C) 2013-2024 Light Lin <lxrite@gmail.com> All Rights Reserved.
  *
  */
 
@@ -115,8 +115,10 @@ void http_proxy_client_connection::start()
             }
             key_generator::get_instance().generate(ivec.data(), ivec.size());
             key_generator::get_instance().generate(key_vec.data(), key_vec.size());
+#ifndef AHP_USE_MBEDTLS
             this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb8_encryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
             this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb8_decryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
+#endif
         }
         else if (std::strcmp(cipher_name.c_str() + 8, "cfb1") == 0) {
             // aes-xxx-cfb1
@@ -134,8 +136,10 @@ void http_proxy_client_connection::start()
             }
             key_generator::get_instance().generate(ivec.data(), ivec.size());
             key_generator::get_instance().generate(key_vec.data(), key_vec.size());
+#ifndef AHP_USE_MBEDTLS
             this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb1_encryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
             this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb1_decryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
+#endif
         }
         else if (std::strcmp(cipher_name.c_str() + 8, "ofb") == 0) {
             // aes-xxx-ofb
@@ -217,7 +221,7 @@ void http_proxy_client_connection::start()
     }
 
     this->encrypted_cipher_info.resize(rsa_pub.modulus_size());
-    if(this->encrypted_cipher_info.size() != rsa_pub.encrypt(cipher_info_raw.size(), cipher_info_raw.data(), this->encrypted_cipher_info.data(), rsa_padding::pkcs1_oaep_padding)) {
+    if(this->encrypted_cipher_info.size() != rsa_pub.encrypt(cipher_info_raw.size(), cipher_info_raw.data(), this->encrypted_cipher_info.data())) {
         return;
     }
 
