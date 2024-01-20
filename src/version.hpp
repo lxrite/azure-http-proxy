@@ -10,7 +10,7 @@
 #define AZURE_VERSION_HPP
 
 #define AHP_MAJOR_VERSION 1
-#define AHP_MINOR_VERSION 1
+#define AHP_MINOR_VERSION 2
 #define AHP_PATCH_VERSION 0
 
 #define AHP_VERSION_TO_STR_(x) #x
