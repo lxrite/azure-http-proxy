@@ -11,6 +11,8 @@ include_directories("third_party/networking-ts-impl/include")
 
 if (AHP_USE_MBEDTLS)
   add_compile_definitions(AHP_USE_MBEDTLS)
+  set(ENABLE_PROGRAMS OFF CACHE BOOL "" FORCE)
+  set(ENABLE_TESTING OFF CACHE BOOL "" FORCE)
   set(MBEDTLS_CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/src/configs/ahp_mbedtls_config.h" CACHE STRING "" FORCE)
   add_subdirectory(third_party/mbedtls)
 else ()
