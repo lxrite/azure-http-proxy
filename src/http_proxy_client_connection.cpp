@@ -100,46 +100,10 @@ void http_proxy_client_connection::start()
             this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb128_decryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
         }
         else if (std::strcmp(cipher_name.c_str() + 8, "cfb8") == 0) {
-            // aes-xxx-cfb8
-            if (std::equal(cipher_name.begin() + 4, cipher_name.begin() + 7, "128")) {
-                cipher_code = 0x01;
-                key_vec.resize(128 / 8);
-            }
-            else if (std::equal(cipher_name.begin() + 4, cipher_name.begin() + 7, "192")) {
-                cipher_code = 0x06;
-                key_vec.resize(192 / 8);
-            }
-            else {
-                cipher_code = 0x0B;
-                key_vec.resize(256 / 8);
-            }
-            key_generator::get_instance().generate(ivec.data(), ivec.size());
-            key_generator::get_instance().generate(key_vec.data(), key_vec.size());
-#ifndef AHP_USE_MBEDTLS
-            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb8_encryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
-            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb8_decryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
-#endif
+            // aes-xxx-cfb8(deprecated)
         }
         else if (std::strcmp(cipher_name.c_str() + 8, "cfb1") == 0) {
-            // aes-xxx-cfb1
-            if (std::equal(cipher_name.begin() + 4, cipher_name.begin() + 7, "128")) {
-                cipher_code = 0x02;
-                key_vec.resize(128 / 8);
-            }
-            else if (std::equal(cipher_name.begin() + 4, cipher_name.begin() + 7, "192")) {
-                cipher_code = 0x07;
-                key_vec.resize(192 / 8);
-            }
-            else {
-                cipher_code = 0x0C;
-                key_vec.resize(256 / 8);
-            }
-            key_generator::get_instance().generate(ivec.data(), ivec.size());
-            key_generator::get_instance().generate(key_vec.data(), key_vec.size());
-#ifndef AHP_USE_MBEDTLS
-            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb1_encryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
-            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb1_decryptor(key_vec.data(), key_vec.size() * 8, ivec.data()));
-#endif
+            // aes-xxx-cfb1(deprecated)
         }
         else if (std::strcmp(cipher_name.c_str() + 8, "ofb") == 0) {
             // aes-xxx-ofb

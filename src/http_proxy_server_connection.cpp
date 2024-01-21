@@ -459,38 +459,10 @@ void http_proxy_server_connection::on_proxy_client_data_arrived(std::size_t byte
             this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb128_decryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
         }
         else if (cipher_code == '\x01' || cipher_code == '\x06' || cipher_code == '\x0B') {
-            // ase-xxx-cfb8
-            std::size_t ivec_size = 16;
-            std::size_t key_bits = 256; // aes-256-cfb8
-            if (cipher_code == '\x01') {
-                // aes-128-cfb8
-                key_bits = 128;
-            }
-            else if (cipher_code == '\x06') {
-                // aes-192-cfb8
-                key_bits = 192;
-            }
-#ifndef AHP_USE_MBEDTLS
-            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb8_encryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
-            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb8_decryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
-#endif
+            // ase-xxx-cfb8(deprecated)
         }
         else if (cipher_code == '\x02' || cipher_code == '\x07' || cipher_code == '\x0C') {
-            // ase-xxx-cfb1
-            std::size_t ivec_size = 16;
-            std::size_t key_bits = 256; // aes-256-cfb1
-            if (cipher_code == '\x02') {
-                // aes-128-cfb1
-                key_bits = 128;
-            }
-            else if (cipher_code == '\x07') {
-                // aes-192-cfb1
-                key_bits = 192;
-            }
-#ifndef AHP_USE_MBEDTLS
-            this->encryptor = std::unique_ptr<stream_encryptor>(new aes_cfb1_encryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
-            this->decryptor = std::unique_ptr<stream_decryptor>(new aes_cfb1_decryptor(&decrypted_cipher_info[cipher_key_offset], key_bits, &decrypted_cipher_info[ivec_offset]));
-#endif
+            // ase-xxx-cfb1(deprecated)
         }
         else if (cipher_code == '\x03' || cipher_code == '\x08' || cipher_code == '\x0D') {
             // ase-xxx-ofb

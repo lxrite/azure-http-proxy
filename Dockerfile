@@ -1,7 +1,7 @@
 FROM alpine:3.18 as builder
 
 RUN apk update \
-    && apk add alpine-sdk cmake openssl-dev linux-headers
+    && apk add alpine-sdk cmake linux-headers
 
 WORKDIR /ahp
 
@@ -12,7 +12,7 @@ RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
 
 FROM alpine:3.18
 
-RUN apk update && apk add libgcc libstdc++ openssl
+RUN apk update && apk add libgcc libstdc++
 
 COPY --from=builder /ahp/build/ahps /usr/local/bin/ahps
 COPY --from=builder /ahp/build/ahpc /usr/local/bin/ahpc
