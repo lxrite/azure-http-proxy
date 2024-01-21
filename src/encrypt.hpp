@@ -213,8 +213,10 @@ static const mbedtls_cipher_info_t* aes_cfb128_cipher(std::size_t key_bits) {
     switch (key_bits) {
         case 128:
             cipher_type = mbedtls_cipher_type_t::MBEDTLS_CIPHER_AES_128_CFB128;
+            break;
         case 192:
             cipher_type = mbedtls_cipher_type_t::MBEDTLS_CIPHER_AES_192_CFB128;
+            break;
         default:
             cipher_type = mbedtls_cipher_type_t::MBEDTLS_CIPHER_AES_256_CFB128;
     }
@@ -227,8 +229,10 @@ static const mbedtls_cipher_info_t* aes_ofb128_cipher(std::size_t key_bits) {
     switch (key_bits) {
         case 128:
             cipher_type = mbedtls_cipher_type_t::MBEDTLS_CIPHER_AES_128_OFB;
+            break;
         case 192:
             cipher_type = mbedtls_cipher_type_t::MBEDTLS_CIPHER_AES_192_OFB;
+            break;
         default:
             cipher_type = mbedtls_cipher_type_t::MBEDTLS_CIPHER_AES_256_OFB;
     }
@@ -241,8 +245,10 @@ static const mbedtls_cipher_info_t* aes_ctr128_cipher(std::size_t key_bits) {
     switch (key_bits) {
         case 128:
             cipher_type = mbedtls_cipher_type_t::MBEDTLS_CIPHER_AES_128_CTR;
+            break;
         case 192:
             cipher_type = mbedtls_cipher_type_t::MBEDTLS_CIPHER_AES_192_CTR;
+            break;
         default:
             cipher_type = mbedtls_cipher_type_t::MBEDTLS_CIPHER_AES_256_CTR;
     }
