@@ -15,6 +15,7 @@
 #include <stdexcept>
 
 #ifdef AHP_USE_MBEDTLS
+#include <mbedtls/cipher.h>
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/error.h>
