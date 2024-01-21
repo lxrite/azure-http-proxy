@@ -14,6 +14,11 @@ AHP(Azure Http Proxy)是一款高速、安全、轻量级和跨平台的HTTP代�
 
 ## 编译和安装
 
+### 拉取代码
+``` shell
+$ git clone --recursive https://github.com/lxrite/azure-http-proxy.git
+```
+
 ### 编译器
 
 AHP使用了部分C++17特性，所以对编译器的版本有较高要求，下面列出了部分已测试过可以用来编译AHP的编译器
@@ -21,35 +26,6 @@ AHP使用了部分C++17特性，所以对编译器的版本有较高要求，下
  - Microsoft Visual Studio >= 2017
  - GCC >= 7.3
  - Clang >= 6.0
-
-### 安装依赖
-
- - OpenSSL >= 3.0
-
-#### Linux
-
-几乎所有的Linux发行版都可以通过包管理安装OpenSSL。
-
-##### Ubuntu
-
-```shell
-$ apt-get install libssl-dev
-```
-
-##### CentOS
-
-```shell
-$ yum install openssl
-$ yum install openssl-devel
-```
-
-#### Windows
-
-Windows可以使用[vcpkg](https://github.com/Microsoft/vcpkg)来安装OpenSSL。
-
-```shell
-$ vcpkg install openssl
-```
 
 ### 编译
 AHP使用自动化构建工具CMake来实现跨平台构建
@@ -143,8 +119,8 @@ auth_key             | 用于身份验证的字符串  | 否               | 值
 #### 支持的加密方法
 
  - aes-xyz-cfb
- - aes-xyz-cfb8
- - aes-xyz-cfb1
+ - <del>aes-xyz-cfb8</del> (自1.2版本开始不再支持)
+ - <del>aes-xyz-cfb1</del> (自1.2版本开始不再支持)
  - aes-xyz-ofb
  - aes-xyz-ctr
 

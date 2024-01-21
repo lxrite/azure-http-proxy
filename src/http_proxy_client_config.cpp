@@ -1,7 +1,7 @@
 /*
  *    http_proxy_client_config.cpp:
  *
- *    Copyright (C) 2013-2023 Light Lin <lxrite@gmail.com> All Rights Reserved.
+ *    Copyright (C) 2013-2024 Light Lin <lxrite@gmail.com> All Rights Reserved.
  *
  */
 
@@ -92,8 +92,6 @@ bool http_proxy_client_config::load_config_data(const std::string& config_data)
                     )) {
                     if (std::equal(cipher.begin() + 8, cipher.end(), "cfb")
                         || std::equal(cipher.begin() + 8, cipher.end(), "cfb128")
-                        || std::equal(cipher.begin() + 8, cipher.end(), "cfb8")
-                        || std::equal(cipher.begin() + 8, cipher.end(), "cfb1")
                         || std::equal(cipher.begin() + 8, cipher.end(), "ofb")
                         || std::equal(cipher.begin() + 8, cipher.end(), "ofb128")
                         || std::equal(cipher.begin() + 8, cipher.end(), "ctr")
