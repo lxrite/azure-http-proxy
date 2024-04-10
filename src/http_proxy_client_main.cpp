@@ -6,6 +6,7 @@
  */
 
 #include <experimental/net>
+#include <csignal>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -100,6 +101,15 @@ static ClientArgs parse_args(int argc, char** argv) {
     return parse_args(argv_vec);
 }
 
+std::weak_ptr<net::io_context> wp_io_ctx;
+static void signal_handler(int signal)
+{
+    auto io_ctx = wp_io_ctx.lock();
+    if (io_ctx) {
+        io_ctx->stop();
+    }
+}
+
 int main(int argc, char** argv)
 {
     using namespace azure_proxy;
@@ -111,8 +121,11 @@ int main(int argc, char** argv)
             std::cout << "server address: " << config.get_proxy_server_address() << ':' << config.get_proxy_server_port() << std::endl;
             std::cout << "local address: " << config.get_bind_address() << ':' << config.get_listen_port() << std::endl;
             std::cout << "cipher: " << config.get_cipher() << std::endl;
-            net::io_context io_ctx;
-            http_proxy_client client(io_ctx);
+            auto io_ctx = std::make_shared<net::io_context>();
+            wp_io_ctx = io_ctx;
+            http_proxy_client client(*io_ctx);
+            std::signal(SIGINT, signal_handler);
+            std::signal(SIGTERM, signal_handler);
             client.run();
         }
     }
