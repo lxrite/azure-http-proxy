@@ -156,11 +156,9 @@ $ ahpc.exe -c client.json
 
 ## 使用Docker
 ```shell
-# 使用拉取到本地的源码进行构建
-docker build . -t lxrite/azure-http-proxy
-# 或者使用URL自动拉取源码构建
-docker build -t lxrite/azure-http-proxy https://github.com/lxrite/azure-http-proxy.git
+# 拉取镜像
+docker pull ghcr.io/lxrite/azure-http-proxy:latest
 
 # 启动 ahps
-docker run -d -p 8090:8090 --mount type=bind,source=$PWD/server.json,target=/data/ahp/server.json lxrite/azure-http-proxy ahps -c /data/ahp/server.json
+docker run -d -p 8090:8090 -v $PWD/server.json:/data/ahp/server.json ghcr.io/lxrite/azure-http-proxy ahps -c /data/ahp/server.json
 ```
